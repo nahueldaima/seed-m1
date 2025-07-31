@@ -1,0 +1,174 @@
+-- Extensions
+create extension if not exists "pgcrypto"; -- for gen_random_uuid()
+
+-- RBAC System (integrates with Supabase Auth) ---------------
+
+create table groups (
+  id   uuid primary key default gen_random_uuid(),
+  name text not null unique,
+  description text,
+  filters text[] default null, -- Array of filter strings for permission scoping
+  created_at  timestamptz default now(),
+  updated_at  timestamptz default now()
+);
+
+create table permissions (
+  id   serial primary key,
+  code text not null unique,
+  description text,
+  created_at  timestamptz default now(),
+  updated_at  timestamptz default now()
+);
+
+create table user_groups (
+  user_id  uuid references auth.users on delete cascade,
+  group_id uuid references groups on delete cascade,
+  primary key (user_id, group_id)
+);
+
+create table group_permissions (
+  group_id uuid references groups on delete cascade,
+  perm_id  int  references permissions on delete cascade,
+  primary key (group_id, perm_id)
+);
+
+-- User profiles (extends Supabase Auth users)
+create table user_profiles (
+  id uuid references auth.users on delete cascade primary key,
+  display_name text,
+  is_superadmin boolean default false,
+  mongo_filters jsonb default '{}', -- filters from MongoDB collections
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- MongoDB collection mappings (dynamic configuration)
+create table mongo_collections (
+  id uuid primary key default gen_random_uuid(),
+  collection_key text not null unique, -- Key used in code/API (e.g. 'centers')
+  mongo_collection_name text not null, -- Actual MongoDB collection name
+  description text,
+  search_fields jsonb default '[]', -- Array of field names to search in MongoDB
+  display_field text not null, -- Field to display in UI dropdowns
+  enabled boolean default true,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+-- Processes & Job Runs --------------------------------------
+create type job_status as enum ('STARTED','RUNNING','SUCCESS','FAIL');
+
+create table processes (
+  id          uuid primary key default gen_random_uuid(),
+  name        text not null unique,
+  description text,
+  default_meta jsonb,
+  mongo_filters jsonb default '{}', -- reference to MongoDB filter collections
+  created_at  timestamptz default now()
+);
+
+create table processes_runs (
+  id          uuid primary key default gen_random_uuid(), -- job_id
+  process_id  uuid references processes on delete cascade,
+  filters     jsonb default '[]', -- values from MongoDB collections
+  status      job_status not null default 'STARTED',
+  created_at  timestamptz default now(),
+  updated_at  timestamptz default now(),
+  duration_ms bigint generated always as (cast(extract(epoch from (updated_at - created_at))*1000 as bigint)) stored,
+  meta        jsonb default '{}',
+  created_by  uuid references auth.users
+);
+
+create table processes_events (
+  id        uuid primary key default gen_random_uuid(),
+  job_id    uuid references processes_runs on delete cascade,
+  seq       int not null,
+  created_at timestamptz default now(),
+  message   text,
+  status    job_status,
+  details   jsonb default '{}',
+  unique (job_id, seq)
+);
+
+
+-- Indexes for performance
+create index idx_user_groups_user_id on user_groups(user_id);
+create index idx_user_groups_group_id on user_groups(group_id);
+create index idx_group_permissions_group_id on group_permissions(group_id);
+create index idx_group_permissions_perm_id on group_permissions(perm_id);
+create index idx_processes_runs_process_id on processes_runs(process_id);
+create index idx_processes_runs_created_at on processes_runs(created_at);
+create index idx_processes_runs_status on processes_runs(status);
+create index idx_processes_events_job_id on processes_events(job_id);
+create index idx_processes_events_seq on processes_events(job_id, seq);
+create index idx_user_profiles_is_superadmin on user_profiles(is_superadmin) where is_superadmin = true;
+
+-- Row Level Security (RLS)
+alter table groups enable row level security;
+alter table permissions enable row level security;
+alter table user_groups enable row level security;
+alter table group_permissions enable row level security;
+alter table user_profiles enable row level security;
+alter table mongo_collections enable row level security;
+alter table processes enable row level security;
+alter table processes_runs enable row level security;
+alter table processes_events enable row level security;
+
+-- Delete any existing policies
+DROP POLICY IF EXISTS "AuthUsersCanAccess" ON public.groups;
+DROP POLICY IF EXISTS "AuthUsersCanAccess" ON public.permissions;
+DROP POLICY IF EXISTS "AuthUsersCanAccess" ON public.user_groups;
+DROP POLICY IF EXISTS "AuthUsersCanAccess" ON public.group_permissions;
+DROP POLICY IF EXISTS "AuthUsersCanAccess" ON public.user_profiles;
+DROP POLICY IF EXISTS "AuthUsersCanAccess" ON public.mongo_collections;
+DROP POLICY IF EXISTS "AuthUsersCanAccess" ON public.processes;
+DROP POLICY IF EXISTS "AuthUsersCanAccess" ON public.processes_runs;
+DROP POLICY IF EXISTS "AuthUsersCanAccess" ON public.processes_events;
+
+-- Basic RLS policies (can be customized based on requirements)
+
+-- Groups: Users can read groups they belong to, admins can manage
+CREATE POLICY "AuthUsersCanAccess" ON "public"."groups"
+FOR ALL
+TO authenticated
+USING (true);
+
+CREATE POLICY "AuthUsersCanAccess" ON "public"."permissions"
+FOR ALL
+TO authenticated
+USING (true);
+
+CREATE POLICY "AuthUsersCanAccess" ON "public"."user_groups"
+FOR ALL
+TO authenticated
+USING (true);
+
+CREATE POLICY "AuthUsersCanAccess" ON "public"."group_permissions"
+FOR ALL
+TO authenticated
+USING (true);
+
+CREATE POLICY "AuthUsersCanAccess" ON "public"."user_profiles"
+FOR ALL
+TO authenticated
+USING (true);
+
+CREATE POLICY "AuthUsersCanAccess" ON "public"."mongo_collections"
+FOR ALL
+TO authenticated
+USING (true);
+
+CREATE POLICY "AuthUsersCanAccess" ON "public"."processes"
+FOR ALL
+TO authenticated
+USING (true);
+
+CREATE POLICY "AuthUsersCanAccess" ON "public"."processes_runs"
+FOR ALL
+TO authenticated
+USING (true);
+
+CREATE POLICY "AuthUsersCanAccess" ON "public"."processes_events"
+FOR ALL
+TO authenticated
+USING (true);

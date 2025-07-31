@@ -1,0 +1,21 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+
+@theme static {
+    --font-sans: 'Helvetica', sans-serif;
+    --breakpoint-3xl: 1920px;
+}
+
+
+:root {
+    /* light-mode background */
+    --ui-bg: #F2F0EF;
+    --ui-primary: var(--ui-color-primary-700);
+}
+
+.dark {
+    /* dark-mode background */
+    --ui-bg: #040e28;
+    --ui-primary: var(--ui-color-primary-400);
+}
