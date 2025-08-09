@@ -15,8 +15,11 @@
     "@nuxt/ui": "^3.3.0",
     "@nuxtjs/color-mode": "^3.5.2",
     "@nuxtjs/supabase": "^1.6.0",
+    "@pinia/nuxt": "^0.11.2",
     "eslint": "^9.32.0",
     "nuxt": "^4.0.1",
+    "pinia": "^3.0.3",
+    "pinia-plugin-persistedstate": "^4.4.1",
     "vue": "^3.5.17",
     "vue-router": "^4.5.1"
   },

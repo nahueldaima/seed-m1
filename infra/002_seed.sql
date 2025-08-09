@@ -43,33 +43,33 @@ INSERT INTO mongo_collections (collection_key, mongo_collection_name, descriptio
   ('teams', 'operational_teams', 'Operational teams', '["name", "code", "manager"]', 'name');
 
 -- Sample processes with MongoDB filter references
-INSERT INTO processes (id, name, description, default_meta, mongo_filters) VALUES
+INSERT INTO processes (id, name, description, default_meta, account, mongo_filters) VALUES
   ('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'Daily Sales Report', 'Generate daily sales report for specified centers', 
-   '{"report_type": "sales", "frequency": "daily"}', 
+   '{"report_type": "sales", "frequency": "daily"}', 'corporate',
    '{"centers": [], "departments": []}'),
    
   ('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'Inventory Sync', 'Synchronize inventory data across systems',
-   '{"sync_type": "inventory", "batch_size": 1000}',
+   '{"sync_type": "inventory", "batch_size": 1000}', 'operations',
    '{"centers": [], "categories": []}'),
    
   ('cccccccc-cccc-cccc-cccc-cccccccccccc', 'Customer Analytics', 'Process customer behavior analytics',
-   '{"analytics_type": "customer", "time_window": "7d"}',
+   '{"analytics_type": "customer", "time_window": "7d"}', 'analytics',
    '{"regions": [], "teams": []}');
 
 -- Sample job runs with matching timestamps
-INSERT INTO processes_runs (id, process_id, filters, status, meta, created_by, created_at, updated_at) VALUES
-  ('dddddddd-dddd-dddd-dddd-dddddddddddd', 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa',
-   '["center_A", "dept_sales"]', 'SUCCESS',
+INSERT INTO processes_runs (id, uuid, environment, account, process_id, filters, status, meta, created_by, created_at, updated_at) VALUES
+  ('dddddddd-dddd-dddd-dddd-dddddddddddd', 'sales-report-001', 'production', 'corporate',
+   'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', '["center_A", "dept_sales"]', 'SUCCESS',
    '{"execution_time": 45000, "records_processed": 15000}', null,
    '2024-01-27 10:00:00+00', '2024-01-27 10:00:45+00'),
    
-  ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
-   '["center_B", "category_electronics"]', 'RUNNING',
+  ('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee', 'inventory-sync-002', 'staging', 'operations',
+   'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', '["center_B", "category_electronics"]', 'RUNNING',
    '{"execution_time": null, "records_processed": 8500}', null,
    '2024-01-27 11:00:00+00', '2024-01-27 11:05:00+00'),
    
-  ('ffffffff-ffff-ffff-ffff-ffffffffffff', 'cccccccc-cccc-cccc-cccc-cccccccccccc',
-   '["region_north", "team_analytics"]', 'FAIL',
+  ('ffffffff-ffff-ffff-ffff-ffffffffffff', 'analytics-003', 'development', 'analytics',
+   'cccccccc-cccc-cccc-cccc-cccccccccccc', '["region_north", "team_analytics"]', 'FAIL',
    '{"execution_time": 12000, "error": "Connection timeout"}', null,
    '2024-01-27 09:00:00+00', '2024-01-27 09:00:30+00');
 

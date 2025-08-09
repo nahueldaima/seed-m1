@@ -7,7 +7,9 @@ export default defineNuxtConfig({
     '@nuxtjs/supabase',
     '@nuxtjs/color-mode',
     '@nuxt/ui',
-    '@nuxt/icon'
+    '@nuxt/icon',
+    '@pinia/nuxt',
+    'pinia-plugin-persistedstate/nuxt'
   ],
   colorMode: {
     classSuffix: ''
@@ -34,5 +36,14 @@ export default defineNuxtConfig({
   },
   devServer: {
     port: 3100
-  }
+  },
+  pinia: {
+    storesDirs: ['./stores/**'],
+  },
+  piniaPluginPersistedstate: {
+    storage: 'localStorage',     // 'cookies' | 'localStorage' | 'sessionStorage'
+    key: 'seed_%id_m1',          // `%id` will be replaced with the store id
+    debug: process.env.NODE_ENV !== 'production',
+    // cookieOptions: { sameSite: 'lax', secure: true }, // ← only when using cookies
+  },
 })

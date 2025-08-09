@@ -13,7 +13,7 @@ class ProcessModel {
     if (options.orderBy) {
       query = query.order(options.orderBy.field, { ascending: options.orderBy.ascending ?? true })
     } else {
-      query = query.order('created_at', { ascending: false })
+      query = query.order('updated_at', { ascending: false })
     }
     
     if (options.limit) {
@@ -33,9 +33,17 @@ class ProcessModel {
 
   /**
    * Find processes by name (partial match)
+   * @param {import('@supabase/supabase-js').SupabaseClient} supabase
+   * @param {string} name
+   * @param {string} account
+   * @returns {Promise<Array<{id: string, name: string, description: string, default_meta: object, account: string, mongo_filters: object, created_at: string, updated_at: string}>>}
    */
-  static async findByName(supabase, name) {
-    const query = supabase.from(this.TABLE_NAME).select('*').ilike('name', `%${name}%`)
+  static async findByName(supabase, name, account) {
+    // only add account if it is not null
+    let query = supabase.from(this.TABLE_NAME).select('*').ilike('name', `%${name}%`)
+    if (account) {
+      query = query.eq('account', account)
+    }
     return executeSupabaseQuery(query)
   }
 

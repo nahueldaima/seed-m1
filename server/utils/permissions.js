@@ -1,4 +1,3 @@
-import {getSupabaseClient} from '~/server/database/supabase'
 import { UserProfileModel, UserGroupModel } from '~/server/database/models'
 import { createError }   from 'h3'
 
@@ -12,7 +11,7 @@ const arraysIntersect = (a = [], b = []) => a.some((v) => b.includes(v))
  * Relying on the "service-role" key (or any key with bypass-RLS claims) so we
  * can read the RBAC tables regardless of RLS policies.
  */
-const fetchUserAuthorisation = async (supabaseAdmin, userId) => {
+export const fetchUserAuthorisation = async (supabaseAdmin, userId) => {
   // 1. Super-admin flag
   const findUserIfIsSuperAdmin = await UserProfileModel.findIsUserIsSuperadmin(supabaseAdmin, userId)
 

@@ -63,12 +63,17 @@ create table processes (
   name        text not null unique,
   description text,
   default_meta jsonb,
+  account     text,
   mongo_filters jsonb default '{}', -- reference to MongoDB filter collections
-  created_at  timestamptz default now()
+  created_at  timestamptz default now(),
+  updated_at  timestamptz default now()
 );
 
 create table processes_runs (
   id          uuid primary key default gen_random_uuid(), -- job_id
+  uuid        text not null unique,
+  environment text,
+  account     text,
   process_id  uuid references processes on delete cascade,
   filters     jsonb default '[]', -- values from MongoDB collections
   status      job_status not null default 'STARTED',
@@ -90,6 +95,46 @@ create table processes_events (
   unique (job_id, seq)
 );
 
+-- Function to update updated_at timestamp
+CREATE OR REPLACE FUNCTION update_updated_at_column()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.updated_at = NOW();
+    RETURN NEW;
+END;
+$$ language 'plpgsql';
+
+-- Triggers to automatically update updated_at
+CREATE TRIGGER update_groups_updated_at 
+    BEFORE UPDATE ON groups 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_permissions_updated_at 
+    BEFORE UPDATE ON permissions 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_user_profiles_updated_at 
+    BEFORE UPDATE ON user_profiles 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_mongo_collections_updated_at 
+    BEFORE UPDATE ON mongo_collections 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_processes_updated_at 
+    BEFORE UPDATE ON processes 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
+
+CREATE TRIGGER update_processes_runs_updated_at 
+    BEFORE UPDATE ON processes_runs 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
+
 
 -- Indexes for performance
 create index idx_user_groups_user_id on user_groups(user_id);
@@ -99,6 +144,9 @@ create index idx_group_permissions_perm_id on group_permissions(perm_id);
 create index idx_processes_runs_process_id on processes_runs(process_id);
 create index idx_processes_runs_created_at on processes_runs(created_at);
 create index idx_processes_runs_status on processes_runs(status);
+create index idx_processes_runs_uuid on processes_runs(uuid);
+create index idx_processes_runs_environment on processes_runs(environment);
+create index idx_processes_runs_account on processes_runs(account);
 create index idx_processes_events_job_id on processes_events(job_id);
 create index idx_processes_events_seq on processes_events(job_id, seq);
 create index idx_user_profiles_is_superadmin on user_profiles(is_superadmin) where is_superadmin = true;

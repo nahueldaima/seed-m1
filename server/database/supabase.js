@@ -38,7 +38,7 @@ export async function executeSupabaseQuery(queryBuilder) {
     console.error('Database operation failed:', error)
     throw createError({
       statusCode: error.statusCode || 500,
-      statusMessage: 'Database operation failed'
+      statusMessage: 'Operation failed'
     })
   }
 }

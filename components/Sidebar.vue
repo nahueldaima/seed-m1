@@ -1,10 +1,8 @@
 <!-- eslint-disable vue/multi-word-component-names -->
 <template>
-  <div 
-    :class="`${mobile ? 'w-80 bg-white dark:bg-gray-900' : 'w-64'} h-full flex flex-col border-r bg-card`"
-  >
+  <div :class="`${mobile ? 'w-80 bg-white dark:bg-gray-900' : 'w-64'} h-full flex flex-col border-r bg-card`">
     <!-- Header -->
-    <div class="p-6 border-b">
+    <div class="p-6 border-b pr-2 pb-0">
       <div class="flex items-center justify-between">
         <div>
           <h2 class="text-lg font-semibold">Job Manager</h2>
@@ -17,14 +15,13 @@
             </span>
           </p>
         </div>
-        <UButton 
-          v-if="mobile"
-          variant="ghost" 
-          size="sm"
-          icon="i-heroicons-x-mark"
-          @click="$emit('close')"
-          class="p-2 lg:hidden"
-        />
+        <UButton variant="ghost" size="sm" icon="i-heroicons-x-mark" @click="$emit('close')" class="p-2 lg:hidden" />
+      </div>
+      <!-- show admin -->
+      <div v-if="!user?.isSuperAdmin" class="flex justify-start mr-1 mt-2 mb-0 p-0">
+        <NuxtLink to="/admin">
+          <Icon name="heroicons-cog-6-tooth" class="w-5 h-5 flex-shrink-0" />
+        </NuxtLink>
       </div>
     </div>
 
@@ -32,14 +29,10 @@
     <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
       <template v-for="item in navigation" :key="item.name">
         <!-- Main navigation item -->
-        <NuxtLink
-          v-if="!item.items"
-          :to="item.href"
-          class="flex items-center px-3 py-2 rounded-md transition-colors group"
-          :class="isActive(item.href) 
+        <NuxtLink v-if="!item.items" :to="item.href"
+          class="flex items-center px-3 py-2 rounded-md transition-colors group" :class="isActive(item.href) 
             ? 'bg-primary text-primary-foreground dark:bg-primary-foreground text-white' 
-            : 'text-foreground hover:bg-accent hover:text-accent-foreground'"
-        >
+            : 'text-foreground hover:bg-accent hover:text-accent-foreground'">
           <Icon :name="item.icon" class="w-4 h-4 mr-3 flex-shrink-0" />
           <span class="truncate">{{ item.name }}</span>
         </NuxtLink>
@@ -49,15 +42,10 @@
           <div class="px-3 py-2 text-sm font-medium text-muted-foreground">
             {{ item.name }}
           </div>
-          <NuxtLink
-            v-for="subItem in item.items"
-            :key="subItem.name"
-            :to="subItem.href"
-            class="flex items-center px-3 py-2 rounded-md transition-colors"
-            :class="isActive(subItem.href) 
+          <NuxtLink v-for="subItem in item.items" :key="subItem.name" :to="subItem.href"
+            class="flex items-center px-3 py-2 rounded-md transition-colors" :class="isActive(subItem.href) 
               ? 'bg-primary text-primary-foreground' 
-              : 'text-foreground hover:bg-accent hover:text-accent-foreground'"
-          >
+              : 'text-foreground hover:bg-accent hover:text-accent-foreground'">
             <Icon :name="subItem.icon" class="w-4 h-4 mr-3 flex-shrink-0" />
             <span class="truncate">{{ subItem.name }}</span>
           </NuxtLink>
@@ -67,26 +55,19 @@
 
     <!-- Footer -->
     <div class="p-4 border-t space-y-3">
-      <div class="flex items-center justify-between">
-        <span class="text-sm text-muted-foreground">Theme</span>
+      <div class="flex items-center justify-end">
         <ClientOnly>
-          <UButton
-            variant="ghost"
-            color="neutral"
-            :icon="isDark ? 'i-heroicons-sun' : 'i-heroicons-moon'"
-            @click="toggleColorMode"
-            class="p-2"
-          />
+          <UButton variant="ghost" color="neutral" :icon="isDark ? 'i-heroicons-sun' : 'i-heroicons-moon'"
+            @click="toggleColorMode" class="p-2" />
         </ClientOnly>
       </div>
-      <UButton
-        @click="$emit('logout')"
-        variant="ghost"
-        class="w-full justify-start"
-      >
-        <Icon name="i-heroicons-arrow-right-on-rectangle" class="w-4 h-4 mr-3 flex-shrink-0" />
-        <span class="truncate">Sign Out</span>
-      </UButton>
+
+      <div class="flex items-center justify-center">
+        <UButton @click="$emit('logout')" variant="ghost">
+          <!-- <Icon name="i-heroicons-arrow-right-on-rectangle" class="w-4 h-4 mr-3 flex-shrink-0" /> -->
+          <span class="truncate">Log Out</span>
+        </UButton>
+      </div>
     </div>
   </div>
 </template>
@@ -111,40 +92,40 @@ defineEmits(['logout', 'close'])
 const route = useRoute()
 
 const navigation = [
-  { 
-    name: 'Dashboard', 
-    href: '/dashboard', 
-    icon: 'heroicons-chart-bar' 
+  {
+    name: 'Dashboard',
+    href: '/dashboard',
+    icon: 'heroicons-chart-bar'
   },
-  { 
-    name: 'Processes', 
-    href: '/processes', 
-    icon: 'i-heroicons-cog-6-tooth' 
+  {
+    name: 'Processes',
+    href: '/processes',
+    icon: 'i-heroicons-cog-6-tooth'
   },
   {
     name: 'Administration',
     items: [
-      { 
-        name: 'Users', 
-        href: '/admin/users', 
-        icon: 'i-heroicons-users' 
+      {
+        name: 'Users',
+        href: '/admin/users',
+        icon: 'i-heroicons-users'
       },
-      { 
-        name: 'Permissions', 
-        href: '/admin/permissions', 
-        icon: 'i-heroicons-shield-check' 
+      {
+        name: 'Permissions',
+        href: '/admin/permissions',
+        icon: 'i-heroicons-shield-check'
       },
-      { 
-        name: 'MongoDB Collections', 
-        href: '/admin/mongo-collections', 
-        icon: 'i-heroicons-circle-stack' 
+      {
+        name: 'MongoDB Collections',
+        href: '/admin/mongo-collections',
+        icon: 'i-heroicons-circle-stack'
       },
     ]
   },
-  { 
-    name: 'Profile', 
-    href: '/profile', 
-    icon: 'i-heroicons-user' 
+  {
+    name: 'Profile',
+    href: '/profile',
+    icon: 'i-heroicons-user'
   },
 ]
 
@@ -169,4 +150,4 @@ const envColorClass = computed(() => {
   }
   return `${map[env.value] || 'bg-gray-500 text-white'}`
 })
-</script> 
+</script>
