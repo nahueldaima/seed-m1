@@ -56,43 +56,53 @@ create table mongo_collections (
 );
 
 -- Processes & Job Runs --------------------------------------
-create type job_status as enum ('STARTED','RUNNING','SUCCESS','FAIL');
+create type process_run_status as enum ('STARTED','RUNNING','SUCCESS','FAIL','WARNING');
+create type process_events_status as enum ('FAIL', 'WARNING', 'SUCCESS');
+create type environment as enum ('develop', 'uat', 'demo', 'production', 'staging', 'test');
+
 
 create table processes (
   id          uuid primary key default gen_random_uuid(),
   name        text not null unique,
   description text,
   default_meta jsonb,
-  account     text,
   mongo_filters jsonb default '{}', -- reference to MongoDB filter collections
   created_at  timestamptz default now(),
-  updated_at  timestamptz default now()
+  account     text,
+  updated_at  timestamptz default now(),
+  log_group   text,
+  log_stream  text,
+  environment environment
 );
 
 create table processes_runs (
-  id          uuid primary key default gen_random_uuid(), -- job_id
+  id          uuid primary key default gen_random_uuid(),
   uuid        text not null unique,
-  environment text,
+  environment environment,
   account     text,
   process_id  uuid references processes on delete cascade,
   filters     jsonb default '[]', -- values from MongoDB collections
-  status      job_status not null default 'STARTED',
+  status      process_run_status default 'STARTED',
   created_at  timestamptz default now(),
   updated_at  timestamptz default now(),
-  duration_ms bigint generated always as (cast(extract(epoch from (updated_at - created_at))*1000 as bigint)) stored,
+  duration_ms integer,
   meta        jsonb default '{}',
-  created_by  uuid references auth.users
+  created_by  uuid references auth.users,
+  finished boolean default false
 );
 
+
 create table processes_events (
-  id        uuid primary key default gen_random_uuid(),
-  job_id    uuid references processes_runs on delete cascade,
-  seq       int not null,
-  created_at timestamptz default now(),
-  message   text,
-  status    job_status,
-  details   jsonb default '{}',
-  unique (job_id, seq)
+  id             uuid primary key default gen_random_uuid(),
+  process_run_id uuid references processes_runs on delete cascade,
+  uuid           text,
+  thread_id      text,
+  environment    environment,
+  last_event     boolean not null default false,
+  created_at     timestamptz default now(),
+  message        text,
+  status         process_events_status not null,
+  details        jsonb default '{}'
 );
 
 -- Function to update updated_at timestamp
@@ -147,8 +157,10 @@ create index idx_processes_runs_status on processes_runs(status);
 create index idx_processes_runs_uuid on processes_runs(uuid);
 create index idx_processes_runs_environment on processes_runs(environment);
 create index idx_processes_runs_account on processes_runs(account);
-create index idx_processes_events_job_id on processes_events(job_id);
-create index idx_processes_events_seq on processes_events(job_id, seq);
+create index idx_processes_events_process_run_id on processes_events(process_run_id);
+create index idx_processes_events_uuid on processes_events(uuid);
+create index idx_processes_events_thread_id on processes_events(thread_id);
+create index idx_processes_events_last_event on processes_events(last_event) where last_event = true;
 create index idx_user_profiles_is_superadmin on user_profiles(is_superadmin) where is_superadmin = true;
 
 -- Row Level Security (RLS)
