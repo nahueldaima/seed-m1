@@ -11,29 +11,58 @@ class ProcessRunModel {
    */
   static async findAll(supabase, options = {}) {
     let query = supabase.from(this.TABLE_NAME).select('*')
-    
+
+    if (options.environment) {
+      query = query.eq('environment', options.environment)
+    }
+
     if (options.status) {
       query = query.eq('status', options.status)
     }
-    
+
     if (options.processId) {
       query = query.eq('process_id', options.processId)
     }
-    
+
     if (options.createdBy) {
       query = query.eq('created_by', options.createdBy)
     }
-    
+
+    if (options.from) {
+      query = query.gte('created_at', options.from)
+    }
+
+    if (options.to) {
+      query = query.lte('created_at', options.to)
+    }
+
+    if (options.search || (options.processIds && options.processIds.length)) {
+      const orFilters = []
+      if (options.search) {
+        const term = options.search
+        orFilters.push(`uuid.ilike.%${term}%`)
+        orFilters.push(`account.ilike.%${term}%`)
+      }
+      if (options.processIds && options.processIds.length) {
+        orFilters.push(`process_id.in.(${options.processIds.join(',')})`)
+      }
+      if (orFilters.length) {
+        query = query.or(orFilters.join(','))
+      }
+    }
+
     if (options.orderBy) {
       query = query.order(options.orderBy.field, { ascending: options.orderBy.ascending ?? true })
     } else {
       query = query.order('created_at', { ascending: false })
     }
-    
-    if (options.limit) {
+
+    if (typeof options.offset === 'number' && options.limit) {
+      query = query.range(options.offset, options.offset + options.limit - 1)
+    } else if (options.limit) {
       query = query.limit(options.limit)
     }
-    
+
     return executeSupabaseQuery(query)
   }
 

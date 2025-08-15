@@ -1,3 +1,4 @@
+import { getQuery } from 'h3'
 import { ProcessRunModel } from '~/server/database/models'
 import { ProcessModel } from '~/server/database/models'
 import { createResponseError } from '~/server/utils/responses'
@@ -21,8 +22,22 @@ const internalProcessRunsGet = async (event) => {
     try {
         const supabase = event.context.supabase;
 
-        const data = await ProcessRunModel.findAll(supabase);
-        
+        const query = getQuery(event)
+
+        const options = {
+            environment: query.environment,
+            status: query.status,
+            processId: query.processId,
+            limit: query.limit ? Number(query.limit) : undefined,
+            offset: query.offset ? Number(query.offset) : undefined,
+            from: query.from,
+            to: query.to,
+            search: query.search,
+            processIds: query.processIds ? query.processIds.split(',') : undefined
+        }
+
+        const data = await ProcessRunModel.findAll(supabase, options);
+
         return data;
 
     } catch (error) {

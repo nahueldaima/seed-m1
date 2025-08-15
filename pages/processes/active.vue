@@ -5,8 +5,13 @@
             <template #actions>
                 <div class="flex items-center gap-3">
                     <EnvironmentSelector />
-                    <!-- <UButton 
-              icon="heroicons-play" 
+                    <UButton
+                        :color="realtimeEnabled ? 'green' : 'gray'"
+                        icon="heroicons-bolt"
+                        @click="toggleRealtime"
+                    >{{ realtimeEnabled ? 'Realtime On' : 'Realtime Off' }}</UButton>
+                    <!-- <UButton
+              icon="heroicons-play"
               size="lg"
               @click="runNewJob"
             >
@@ -34,26 +39,35 @@
         <!-- Jobs Table -->
         <LibDataTable title="Job Runs" description="Current and recent job executions" :rows="processedValuesForTable"
             :columns="tableColumns" :loading="loading" />
+        <div ref="loadMoreTrigger"></div>
     </div>
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, onUnmounted, watch, ref, computed } from 'vue'
 const { apiRequest } = useApi();
 const mainStore = useMainStore()
 const processes = computed(() => mainStore.processes)
 
 const supabase = useSupabaseClient()
 
-
 // Reactive state
 const loading = ref(false)
+const realtimeEnabled = ref(false)
+const page = ref(0)
+const pageSize = 100
+const hasMore = ref(true)
 const filterValues = ref({
     search: '',
     status: 'all',
-    process: 'all'
+    process: 'all',
+    relative: '',
+    dateRange: { start: '', end: '' }
 })
 const processesRuns = ref([])
+const loadMoreTrigger = ref(null)
+let observer
+let realtimeChannel
 
 // Filter configuration
 const filterConfig = [
@@ -62,6 +76,24 @@ const filterConfig = [
         type: 'search',
         placeholder: 'Search jobs...',
         icon: 'heroicons-magnifying-glass'
+    },
+    {
+        key: 'relative',
+        type: 'select',
+        placeholder: 'Relative time',
+        options: [
+            { label: 'All time', value: '' },
+            { label: 'Last 5 minutes', value: '5' },
+            { label: 'Last 10 minutes', value: '10' },
+            { label: 'Last 30 minutes', value: '30' },
+            { label: 'Last 60 minutes', value: '60' }
+        ]
+    },
+    {
+        key: 'dateRange',
+        type: 'daterange',
+        startPlaceholder: 'Start date',
+        endPlaceholder: 'End date'
     },
     {
         key: 'status',
@@ -80,14 +112,17 @@ const filterConfig = [
         type: 'select',
         placeholder: 'All Processes',
         options: [
-            { label: 'All Processes', value: 'all' },
-            { label: 'Data Import', value: 'data-import' },
-            { label: 'Report Generation', value: 'report-gen' },
-            { label: 'Email Notifications', value: 'email-notif' },
-            { label: 'Database Cleanup', value: 'db-cleanup' }
+            { label: 'All Processes', value: 'all' }
         ]
     }
 ]
+
+watch(processes, (newVal) => {
+    const processFilter = filterConfig.find(f => f.key === 'process')
+    if (processFilter) {
+        processFilter.options = [{ label: 'All Processes', value: 'all' }, ...newVal.map(p => ({ label: p.name, value: p.id }))]
+    }
+}, { immediate: true })
 
 // Table columns with enhanced configuration
 const tableColumns = [
@@ -129,42 +164,12 @@ const completedJobs = computed(() => processesRuns.value.filter(j => j.status ==
 const failedJobs = computed(() => processesRuns.value.filter(j => j.status === 'FAIL').length)
 
 const processedValuesForTable = computed(() => {
-    let values = processesRuns.value;
-
-    return values.map(value => {
+    return processesRuns.value.map(value => {
         return {
             ...value,
             process_id: processes.value.find(p => p.id === value.process_id)?.name,
         }
     })
-
-
-    if (filterValues.value.search) {
-        const searchTerm = filterValues.value.search.toLowerCase()
-        filtered = filtered.filter(job =>
-            (job.process_id && String(job.process_id).toLowerCase().includes(searchTerm)) ||
-            (job.account && String(job.account).toLowerCase().includes(searchTerm))
-        )
-    }
-
-    if (filterValues.value.status !== 'all') {
-        const status = filterValues.value.status;
-        if (status === 'running') {
-            filtered = filtered.filter(job => ['RUNNING', 'STARTED'].includes(job.status))
-        } else if (status === 'completed') {
-            filtered = filtered.filter(job => job.status === 'SUCCESS')
-        } else if (status === 'failed') {
-            filtered = filtered.filter(job => job.status === 'FAIL')
-        } else if (status === 'queued') {
-            filtered = filtered.filter(job => job.status === 'QUEUED')
-        }
-    }
-
-    if (filterValues.value.process !== 'all') {
-        filtered = filtered.filter(job => job.process_id === filterValues.value.process)
-    }
-
-    return filtered
 })
 
 // Methods
@@ -181,55 +186,132 @@ const getStatusColor = (status) => {
 
 const handleFiltersUpdate = (newFilters) => {
     filterValues.value = { ...newFilters }
+    retrieveProcessesRuns(true)
 }
 
-const retrieveProcessesRuns = async () => {
-    const { data, error } = await apiRequest('/api/internal/processes/processes_runs', { showSuccessToast: true })
-    if (error) {
+const retrieveProcessesRuns = async (reset = false) => {
+    if (loading.value || (!hasMore.value && !reset)) return
+    loading.value = true
+
+    if (reset) {
+        page.value = 0
+        processesRuns.value = []
+        hasMore.value = true
+    }
+
+    const params = new URLSearchParams()
+    params.set('environment', mainStore.mainEnv)
+    params.set('limit', pageSize)
+    params.set('offset', page.value * pageSize)
+
+    if (filterValues.value.search) {
+        params.set('search', filterValues.value.search)
+        const matched = processes.value
+            .filter(p => p.name.toLowerCase().includes(filterValues.value.search.toLowerCase()))
+            .map(p => p.id)
+        if (matched.length) {
+            params.set('processIds', matched.join(','))
+        }
+    }
+
+    if (filterValues.value.status !== 'all') {
+        const map = { running: 'RUNNING', completed: 'SUCCESS', failed: 'FAIL', queued: 'QUEUED' }
+        params.set('status', map[filterValues.value.status])
+    }
+
+    if (filterValues.value.process !== 'all') {
+        params.set('processId', filterValues.value.process)
+    }
+
+    if (filterValues.value.relative) {
+        const mins = Number(filterValues.value.relative)
+        const from = new Date(Date.now() - mins * 60000).toISOString()
+        params.set('from', from)
+    } else if (filterValues.value.dateRange.start && filterValues.value.dateRange.end) {
+        params.set('from', new Date(filterValues.value.dateRange.start).toISOString())
+        params.set('to', new Date(filterValues.value.dateRange.end).toISOString())
+    }
+
+    const { data, error } = await apiRequest(`/api/internal/processes/processes_runs?${params.toString()}`, { showSuccessToast: false })
+    if (!error && data) {
+        processesRuns.value.push(...data)
+        if (data.length < pageSize) {
+            hasMore.value = false
+        } else {
+            page.value += 1
+        }
+    } else if (error) {
         console.error('Error fetching data:', error)
-    } else {
-        processesRuns.value = data;
+    }
+    loading.value = false
+}
+
+const subscribeToProcessesRuns = () => {
+    realtimeChannel = supabase.channel('realtime:processes_runs').on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'processes_runs', filter: `environment=eq.${mainStore.mainEnv}` },
+        (payload) => {
+            if (payload.eventType === 'INSERT') {
+                processesRuns.value.unshift(payload.new)
+            } else if (payload.eventType === 'UPDATE') {
+                const index = processesRuns.value.findIndex(run => run.id === payload.new.id)
+                if (index !== -1) {
+                    processesRuns.value[index] = payload.new
+                }
+            } else if (payload.eventType === 'DELETE') {
+                const index = processesRuns.value.findIndex(run => run.id === payload.old.id)
+                if (index !== -1) {
+                    processesRuns.value.splice(index, 1)
+                }
+            }
+        }
+    ).subscribe()
+}
+
+const unsubscribeFromProcessesRuns = () => {
+    if (realtimeChannel) {
+        realtimeChannel.unsubscribe()
+        realtimeChannel = null
     }
 }
 
-const subscribeToProcessesRuns = async () => {
-    supabase.channel('realtime:processes_runs').on('postgres_changes', { event: '*', schema: 'public', table: 'processes_runs', filter: `created_at > '2025-08-15 10:00:00'` }, (payload) => {
-        console.log('payload', payload.eventType, payload);
-        
-        if (payload.eventType === 'INSERT') {
-            // Add new record
-            processesRuns.value.push(payload.new);
-        } else if (payload.eventType === 'UPDATE') {
-            // Update existing record
-            const index = processesRuns.value.findIndex(run => run.id === payload.new.id);
-            if (index !== -1) {
-                processesRuns.value[index] = payload.new;
-            }
-        } else if (payload.eventType === 'DELETE') {
-            // Remove deleted record
-            const index = processesRuns.value.findIndex(run => run.id === payload.old.id);
-            if (index !== -1) {
-                processesRuns.value.splice(index, 1);
-            }
-        }
-    }).subscribe();
+const toggleRealtime = () => {
+    realtimeEnabled.value = !realtimeEnabled.value
+    if (realtimeEnabled.value) {
+        subscribeToProcessesRuns()
+    } else {
+        unsubscribeFromProcessesRuns()
+    }
 }
 
 // on Mounted
 onMounted(async () => {
-    await retrieveProcessesRuns();
-    await subscribeToProcessesRuns();
+    await retrieveProcessesRuns(true)
 
-    // check if processes are loaded
     if (processes.value.length === 0) {
-        await mainStore.processesGetAll();
+        await mainStore.processesGetAll()
+    }
+
+    observer = new IntersectionObserver((entries) => {
+        if (entries[0].isIntersecting) {
+            retrieveProcessesRuns()
+        }
+    })
+    if (loadMoreTrigger.value) observer.observe(loadMoreTrigger.value)
+})
+
+watch(() => mainStore.mainEnv, () => {
+    retrieveProcessesRuns(true)
+    if (realtimeEnabled.value) {
+        unsubscribeFromProcessesRuns()
+        subscribeToProcessesRuns()
     }
 })
 
-
 // on Unmounted
 onUnmounted(() => {
-    supabase.channel('realtime:processes_runs').unsubscribe();
+    observer?.disconnect()
+    unsubscribeFromProcessesRuns()
 })
 
 </script>
