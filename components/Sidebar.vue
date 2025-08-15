@@ -2,14 +2,12 @@
 <template>
   <div :class="`${mobile ? 'w-80 bg-white dark:bg-gray-900' : 'w-64'} h-full flex flex-col border-r bg-card`">
     <!-- Header -->
-    <div class="p-6 border-b pr-2 pb-0">
+    <div class="p-6 border-b pr-2 pb-2">
       <div class="flex items-center justify-between">
         <div>
-          <h2 class="text-lg font-semibold">Job Manager</h2>
-          <p class="text-sm text-muted-foreground mt-1">
-            Welcome, {{ user?.email?.split('@')[0] || 'User' }}
-          </p>
+          <h2 class="text-lg font-semibold">Admin backoffice</h2>
           <p class="text-xs mt-1">
+            <small class="mr-2">Env:</small>
             <span :class="envColorClass" class="px-2 py-0.5 rounded font-semibold uppercase tracking-wide">
               {{ env }}
             </span>
@@ -18,11 +16,11 @@
         <UButton variant="ghost" size="sm" icon="i-heroicons-x-mark" @click="$emit('close')" class="p-2 lg:hidden" />
       </div>
       <!-- show admin -->
-      <div v-if="!user?.isSuperAdmin" class="flex justify-start mr-1 mt-2 mb-0 p-0">
+      <!-- <div v-if="!user?.isSuperAdmin" class="flex justify-start mr-1 mt-2 mb-0 p-0">
         <NuxtLink to="/admin">
           <Icon name="heroicons-cog-6-tooth" class="w-5 h-5 flex-shrink-0" />
         </NuxtLink>
-      </div>
+      </div> -->
     </div>
 
     <!-- Navigation -->
@@ -93,14 +91,24 @@ const route = useRoute()
 
 const navigation = [
   {
-    name: 'Dashboard',
+    name: 'Home',
     href: '/dashboard',
-    icon: 'heroicons-chart-bar'
+    icon: 'i-heroicons-home'
   },
   {
-    name: 'Processes',
-    href: '/processes',
-    icon: 'i-heroicons-cog-6-tooth'
+    name: 'Procesos',
+    items: [
+      {
+        name: 'Activos',
+        href: '/processes/active',
+        icon: 'i-heroicons-play'
+      },
+      {
+        name: 'Catálogo',
+        href: '/processes/catalog',
+        icon: 'i-heroicons-list-bullet'
+      }
+    ]
   },
   {
     name: 'Administration',

@@ -1,30 +1,15 @@
-export const environments = [
-  { label: 'Production', value: 'production', id: 'production' },
-  { label: 'Demo', value: 'demo', id: 'demo' },
-  { label: 'UAT', value: 'uat', id: 'uat' },
-  { label: 'Develop', value: 'develop', id: 'develop' }
-]
-
 export const useMainEnvironment = () => {
-  const env = useCookie('mainEnv', {
-    default: () => 'production',
-    watch: true,
-    maxAge: 60 * 60 * 24 * 30
-  })
+  const store = useMainStore();
 
-  // ✅ Helper: Change env safely
-  const switchEnv = (newEnv) => {
-    if (environments.some(e => e.value === newEnv)) {
-      env.value = newEnv
-    } else {
-      console.warn(`Invalid environment: ${newEnv}`)
-    }
-  }
+  // Create a computed ref for reactive environment value
+  const env = computed({
+    get: () => store.mainEnv,
+    set: (value) => store.switchEnv(value)
+  });
 
-  // ✅ Helper: Get current environment object (label/value/id)
-  const currentEnv = computed(() => {
-    return environments.find(e => e.value === env.value) || environments[0]
-  })
+  const switchEnv = (newEnv) => store.switchEnv(newEnv);
+  const currentEnv = computed(() => store.getCurrentEnv);
+  const environments = store.getEnvironments;
 
   return { env, switchEnv, currentEnv, environments }
 }

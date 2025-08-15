@@ -18,7 +18,7 @@ export const useApi = () => {
     const handleLogout = async () => {
         try {
             await supabase.auth.signOut()
-            await router.push('/login')
+            await router.go('/login')
 
             toast.add({
                 title: 'Session Expired',
