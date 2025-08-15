@@ -90,48 +90,51 @@
       </template>
     </LibDataTable>
 
-    <UModal v-model="isCreateOpen">
-      <UCard>
-        <template #header>
-          <h3 class="text-lg font-semibold">Create Process</h3>
-        </template>
-        <form class="space-y-4" @submit.prevent="createProcess">
-          <div>
-            <label class="block text-sm font-medium mb-1">Name</label>
-            <UInput v-model="newProcess.name" required />
-          </div>
-          <div>
-            <label class="block text-sm font-medium mb-1">Description</label>
-            <UInput v-model="newProcess.description" />
-          </div>
-          <div>
-            <label class="block text-sm font-medium mb-1">Account</label>
-            <UInput v-model="newProcess.account" />
-          </div>
-          <div>
-            <label class="block text-sm font-medium mb-1">Environment</label>
-            <USelect v-model="newProcess.environment" :options="envOptions" placeholder="Select environment" />
-          </div>
-          <div class="flex justify-end gap-2 pt-2">
-            <UButton type="button" variant="ghost" color="neutral" @click="isCreateOpen = false">
-              Cancel
-            </UButton>
-            <UButton type="submit" color="primary">
-              Create
-            </UButton>
-          </div>
-        </form>
-      </UCard>
+    <UModal v-model:open="isCreateOpen">
+      <template #content>
+        <UCard>
+          <template #header>
+            <h3 class="text-lg font-semibold">Create Process</h3>
+          </template>
+          <form class="space-y-4" @submit.prevent="createProcess">
+            <div>
+              <label class="block text-sm font-medium mb-1">Name</label>
+              <UInput v-model="newProcess.name" required />
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Description</label>
+              <UInput v-model="newProcess.description" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Account</label>
+              <UInput v-model="newProcess.account" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Environment</label>
+              <USelect v-model="newProcess.environment" :options="envOptions" placeholder="Select environment" />
+            </div>
+            <div class="flex justify-end gap-2 pt-2">
+              <UButton type="button" variant="ghost" color="neutral" @click="isCreateOpen = false">
+                Cancel
+              </UButton>
+              <UButton type="submit" color="primary">
+                Create
+              </UButton>
+            </div>
+          </form>
+        </UCard>
+      </template>
     </UModal>
   </div>
 </template>
 
 <script setup>
-import { onMounted, reactive } from 'vue'
+import { onMounted, reactive, ref, computed, watch } from 'vue'
 
 const mainStore = useMainStore()
 const processes = computed(() => mainStore.processes)
 const canCreate = computed(() => mainStore.getPermissions?.includes('PROCESSES_WRITE'))
+const currentEnv = computed(() => mainStore.getCurrentEnv.value)
 
 onMounted(async () => {
   if (!processes.value.length) {
@@ -144,11 +147,22 @@ const filterValues = ref({
   account: 'all'
 })
 
-const accounts = computed(() => Array.from(new Set(processes.value.map(p => p.account).filter(Boolean))))
+const processesByEnv = computed(() =>
+  processes.value.filter(p => p.environment === currentEnv.value)
+)
+
+const accounts = computed(() =>
+  Array.from(new Set(processesByEnv.value.map(p => p.account).filter(Boolean)))
+)
+
 const accountsOptions = computed(() => [
   { label: 'All Accounts', value: 'all' },
   ...accounts.value.map(a => ({ label: a, value: a }))
 ])
+
+watch(currentEnv, () => {
+  filterValues.value.account = 'all'
+})
 
 const filterConfig = computed(() => [
   { key: 'search', type: 'search', placeholder: 'Search processes...' },
@@ -160,7 +174,7 @@ const handleFiltersUpdate = (newFilters) => {
 }
 
 const filteredProcesses = computed(() => {
-  let list = processes.value
+  let list = processesByEnv.value
   const term = filterValues.value.search?.toLowerCase()
   if (term) {
     list = list.filter(p =>
@@ -195,7 +209,7 @@ const openCreateModal = () => {
   newProcess.name = ''
   newProcess.description = ''
   newProcess.account = ''
-  newProcess.environment = mainStore.getCurrentEnv.value
+  newProcess.environment = currentEnv.value
   isCreateOpen.value = true
 }
 
