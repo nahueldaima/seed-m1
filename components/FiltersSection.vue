@@ -10,43 +10,45 @@
     <div class="p-6 space-y-4">
       <div :class="`grid grid-cols-1 md:grid-cols-${gridCols} gap-4`">
         <template v-for="filter in filters" :key="filter.key">
-          <!-- Search Input -->
-          <UInput
-            v-if="filter.type === 'search'"
-            :model-value="filterValues[filter.key]"
-            @update:model-value="updateFilter(filter.key, $event)"
-            :icon="filter.icon || 'heroicons-magnifying-glass'"
-            :placeholder="filter.placeholder"
-            :size="filter.size || 'md'"
-          />
-          
-          <!-- Select Dropdown -->
-          <USelect
-            v-else-if="filter.type === 'select'"
-            :model-value="filterValues[filter.key]"
-            @update:model-value="updateFilter(filter.key, $event)"
-            :options="filter.options"
-            :placeholder="filter.placeholder"
-            :size="filter.size || 'md'"
-          />
-          
-          <!-- Date Range -->
-          <div v-else-if="filter.type === 'daterange'" class="flex space-x-2">
+          <template v-if="!filter.show || filter.show(filterValues)">
+            <!-- Search Input -->
             <UInput
-              :model-value="filterValues[filter.key]?.start"
-              @update:model-value="updateDateRange(filter.key, 'start', $event)"
-              type="date"
-              :placeholder="filter.startPlaceholder || 'Start date'"
+              v-if="filter.type === 'search'"
+              :model-value="filterValues[filter.key]"
+              @update:model-value="updateFilter(filter.key, $event)"
+              :icon="filter.icon || 'heroicons-magnifying-glass'"
+              :placeholder="filter.placeholder"
               :size="filter.size || 'md'"
             />
-            <UInput
-              :model-value="filterValues[filter.key]?.end"
-              @update:model-value="updateDateRange(filter.key, 'end', $event)"
-              type="date"
-              :placeholder="filter.endPlaceholder || 'End date'"
+
+            <!-- Select Dropdown -->
+            <USelect
+              v-else-if="filter.type === 'select'"
+              :model-value="filterValues[filter.key]"
+              @update:model-value="updateFilter(filter.key, $event)"
+              :options="filter.options"
+              :placeholder="filter.placeholder"
               :size="filter.size || 'md'"
             />
-          </div>
+
+            <!-- Date Range -->
+            <div v-else-if="filter.type === 'daterange'" class="flex space-x-2">
+              <UInput
+                :model-value="filterValues[filter.key]?.start"
+                @update:model-value="updateDateRange(filter.key, 'start', $event)"
+                type="datetime-local"
+                :placeholder="filter.startPlaceholder || 'Start date'"
+                :size="filter.size || 'md'"
+              />
+              <UInput
+                :model-value="filterValues[filter.key]?.end"
+                @update:model-value="updateDateRange(filter.key, 'end', $event)"
+                type="datetime-local"
+                :placeholder="filter.endPlaceholder || 'End date'"
+                :size="filter.size || 'md'"
+              />
+            </div>
+          </template>
         </template>
       </div>
       
@@ -90,21 +92,17 @@ const emit = defineEmits(['update:filters'])
 // Initialize filter values
 const filterValues = ref({})
 
-// Initialize default values
+// Initialize default values and keep in sync when filters change
 watchEffect(() => {
-  const initialValues = {}
   props.filters.forEach(filter => {
-    if (filter.type === 'daterange') {
-      initialValues[filter.key] = { start: '', end: '' }
-    } else {
-      initialValues[filter.key] = filter.defaultValue || (filter.type === 'select' ? 'all' : '')
+    if (!(filter.key in filterValues.value)) {
+      if (filter.type === 'daterange') {
+        filterValues.value[filter.key] = { start: '', end: '' }
+      } else {
+        filterValues.value[filter.key] = filter.defaultValue ?? (filter.type === 'select' ? 'all' : '')
+      }
     }
   })
-  
-  // Only set if not already initialized
-  if (Object.keys(filterValues.value).length === 0) {
-    filterValues.value = initialValues
-  }
 })
 
 const updateFilter = (key, value) => {
@@ -126,7 +124,7 @@ const clearAllFilters = () => {
     if (filter.type === 'daterange') {
       clearedValues[filter.key] = { start: '', end: '' }
     } else {
-      clearedValues[filter.key] = filter.type === 'select' ? 'all' : ''
+      clearedValues[filter.key] = filter.defaultValue ?? (filter.type === 'select' ? 'all' : '')
     }
   })
   filterValues.value = clearedValues
@@ -135,6 +133,7 @@ const clearAllFilters = () => {
 
 const hasActiveFilters = computed(() => {
   return props.filters.some(filter => {
+    if (filter.isFilter === false) return false
     const value = filterValues.value[filter.key]
     if (filter.type === 'daterange') {
       return value?.start || value?.end

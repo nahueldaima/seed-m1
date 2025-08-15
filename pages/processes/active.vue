@@ -6,7 +6,7 @@
                 <div class="flex items-center gap-3">
                     <EnvironmentSelector />
                     <UButton
-                        :color="realtimeEnabled ? 'green' : 'gray'"
+                        :color="realtimeEnabled ? 'primary' : 'gray'"
                         icon="heroicons-bolt"
                         @click="toggleRealtime"
                     >{{ realtimeEnabled ? 'Realtime On' : 'Realtime Off' }}</UButton>
@@ -61,6 +61,7 @@ const filterValues = ref({
     search: '',
     status: 'all',
     process: 'all',
+    timeMode: 'relative',
     relative: '',
     dateRange: { start: '', end: '' }
 })
@@ -70,12 +71,23 @@ let observer
 let realtimeChannel
 
 // Filter configuration
-const filterConfig = [
+const filterConfig = ref([
     {
         key: 'search',
         type: 'search',
         placeholder: 'Search jobs...',
         icon: 'heroicons-magnifying-glass'
+    },
+    {
+        key: 'timeMode',
+        type: 'select',
+        placeholder: 'Time mode',
+        options: [
+            { label: 'Relative', value: 'relative' },
+            { label: 'Absolute', value: 'absolute' }
+        ],
+        defaultValue: 'relative',
+        isFilter: false
     },
     {
         key: 'relative',
@@ -87,13 +99,15 @@ const filterConfig = [
             { label: 'Last 10 minutes', value: '10' },
             { label: 'Last 30 minutes', value: '30' },
             { label: 'Last 60 minutes', value: '60' }
-        ]
+        ],
+        show: (values) => values.timeMode === 'relative'
     },
     {
         key: 'dateRange',
         type: 'daterange',
         startPlaceholder: 'Start date',
-        endPlaceholder: 'End date'
+        endPlaceholder: 'End date',
+        show: (values) => values.timeMode === 'absolute'
     },
     {
         key: 'status',
@@ -115,10 +129,10 @@ const filterConfig = [
             { label: 'All Processes', value: 'all' }
         ]
     }
-]
+])
 
 watch(processes, (newVal) => {
-    const processFilter = filterConfig.find(f => f.key === 'process')
+    const processFilter = filterConfig.value.find(f => f.key === 'process')
     if (processFilter) {
         processFilter.options = [{ label: 'All Processes', value: 'all' }, ...newVal.map(p => ({ label: p.name, value: p.id }))]
     }
@@ -185,6 +199,11 @@ const getStatusColor = (status) => {
 }
 
 const handleFiltersUpdate = (newFilters) => {
+    if (newFilters.timeMode === 'relative') {
+        newFilters.dateRange = { start: '', end: '' }
+    } else if (newFilters.timeMode === 'absolute') {
+        newFilters.relative = ''
+    }
     filterValues.value = { ...newFilters }
     retrieveProcessesRuns(true)
 }
@@ -205,12 +224,15 @@ const retrieveProcessesRuns = async (reset = false) => {
     params.set('offset', page.value * pageSize)
 
     if (filterValues.value.search) {
-        params.set('search', filterValues.value.search)
-        const matched = processes.value
-            .filter(p => p.name.toLowerCase().includes(filterValues.value.search.toLowerCase()))
-            .map(p => p.id)
-        if (matched.length) {
-            params.set('processIds', matched.join(','))
+        const term = filterValues.value.search.trim()
+        if (term) {
+            params.set('search', term)
+            const matched = processes.value
+                .filter(p => p.name.toLowerCase().includes(term.toLowerCase()))
+                .map(p => p.id)
+            if (matched.length) {
+                params.set('processIds', matched.join(','))
+            }
         }
     }
 
@@ -223,13 +245,25 @@ const retrieveProcessesRuns = async (reset = false) => {
         params.set('processId', filterValues.value.process)
     }
 
-    if (filterValues.value.relative) {
+    if (filterValues.value.timeMode === 'relative' && filterValues.value.relative) {
         const mins = Number(filterValues.value.relative)
-        const from = new Date(Date.now() - mins * 60000).toISOString()
-        params.set('from', from)
-    } else if (filterValues.value.dateRange.start && filterValues.value.dateRange.end) {
-        params.set('from', new Date(filterValues.value.dateRange.start).toISOString())
-        params.set('to', new Date(filterValues.value.dateRange.end).toISOString())
+        if (!isNaN(mins)) {
+            const fromDate = new Date(Date.now() - mins * 60000)
+            if (!isNaN(fromDate)) {
+                params.set('from', fromDate.toISOString())
+            }
+        }
+    } else if (
+        filterValues.value.timeMode === 'absolute' &&
+        filterValues.value.dateRange.start &&
+        filterValues.value.dateRange.end
+    ) {
+        const startDate = new Date(filterValues.value.dateRange.start)
+        const endDate = new Date(filterValues.value.dateRange.end)
+        if (!isNaN(startDate) && !isNaN(endDate)) {
+            params.set('from', startDate.toISOString())
+            params.set('to', endDate.toISOString())
+        }
     }
 
     const { data, error } = await apiRequest(`/api/internal/processes/processes_runs?${params.toString()}`, { showSuccessToast: false })
