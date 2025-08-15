@@ -26,7 +26,7 @@
               v-else-if="filter.type === 'select'"
               :model-value="filterValues[filter.key]"
               @update:model-value="updateFilter(filter.key, $event)"
-              :options="filter.options"
+              :items="filter.options"
               :placeholder="filter.placeholder"
               :size="filter.size || 'md'"
             />

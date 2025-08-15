@@ -94,7 +94,6 @@ const filterConfig = ref([
         type: 'select',
         placeholder: 'Relative time',
         options: [
-            { label: 'All time', value: '' },
             { label: 'Last 5 minutes', value: '5' },
             { label: 'Last 10 minutes', value: '10' },
             { label: 'Last 30 minutes', value: '30' },
@@ -115,10 +114,11 @@ const filterConfig = ref([
         placeholder: 'All Statuses',
         options: [
             { label: 'All Statuses', value: 'all' },
-            { label: 'Running', value: 'running' },
-            { label: 'Completed', value: 'completed' },
-            { label: 'Failed', value: 'failed' },
-            { label: 'Queued', value: 'queued' }
+            { label: 'Running', value: 'RUNNING' },
+            { label: 'Success', value: 'SUCCESS' },
+            { label: 'Failed', value: 'FAIL' },
+            { label: 'Warning', value: 'WARNING' },
+            { label: 'Started', value: 'STARTED' }
         ]
     },
     {
@@ -237,8 +237,7 @@ const retrieveProcessesRuns = async (reset = false) => {
     }
 
     if (filterValues.value.status !== 'all') {
-        const map = { running: 'RUNNING', completed: 'SUCCESS', failed: 'FAIL', queued: 'QUEUED' }
-        params.set('status', map[filterValues.value.status])
+        params.set('status', filterValues.value.status)
     }
 
     if (filterValues.value.process !== 'all') {
