@@ -1,78 +1,85 @@
 <template>
   <UCard>
     <template #header>
-      <div class="flex items-center">
-        <Icon name="heroicons-funnel" class="w-4 h-4 mr-2" />
-        <h3 class="text-lg font-semibold">{{ title }}</h3>
+      <div class="flex items-center justify-between">
+        <div class="flex items-center">
+          <Icon name="heroicons-funnel" class="w-4 h-4 mr-2" />
+          <h3 class="text-lg font-semibold">{{ title }}</h3>
+        </div>
+        <div class="flex justify-end"> 
+          <slot name="subheader" />
+        </div>
       </div>
     </template>
+
     
     <div class="p-6 space-y-4">
       <div :class="`grid grid-cols-1 md:grid-cols-${gridCols} gap-4`">
         <template v-for="filter in filters" :key="filter.key">
-          <!-- Search Input -->
-          <UInput
-            v-if="filter.type === 'search'"
-            :model-value="filterValues[filter.key]"
-            @update:model-value="updateFilter(filter.key, $event)"
-            :icon="filter.icon || 'heroicons-magnifying-glass'"
-            :placeholder="filter.placeholder"
-            :size="filter.size || 'md'"
-          />
-          
-          <!-- Select Dropdown -->
-          <USelect
-            v-else-if="filter.type === 'select'"
-            :model-value="filterValues[filter.key]"
-            @update:model-value="updateFilter(filter.key, $event)"
-            :items="filter.options"
-            :placeholder="filter.placeholder"
-            :size="filter.size || 'md'"
-            :searchable="filter.searchable"
-          />
-          
-          <USelectMenu
-            v-else-if="filter.type === 'select-menu'"
-            :items="filter.options"
-            :model-value="filterValues[filter.key]"
-            @update:model-value="updateFilter(filter.key, $event.value)"
-            :placeholder="filter.placeholder"
-            :id="filter.key"
-            :size="filter.size || 'md'"
-            :class="filter.class || 'w-full'"
-          />
-          
-          <!-- Date Range -->
-          <div v-else-if="filter.type === 'daterange'" class="flex space-x-2">
+          <template v-if="!filter.show || filter.show(filterValues)">
+            <!-- Search Input -->
             <UInput
-              :model-value="filterValues[filter.key]?.start"
-              @update:model-value="updateDateRange(filter.key, 'start', $event)"
-              type="date"
-              :placeholder="filter.startPlaceholder || 'Start date'"
+              v-if="filter.type === 'search'"
+              :icon="filter.icon || 'heroicons-magnifying-glass'"
+              :placeholder="filter.placeholder"
               :size="filter.size || 'md'"
+              :model-value="filterValues[filter.key]"
+              @update:model-value="updateFilter(filter.key, $event)"
             />
-            <UInput
-              :model-value="filterValues[filter.key]?.end"
-              @update:model-value="updateDateRange(filter.key, 'end', $event)"
-              type="date"
-              :placeholder="filter.endPlaceholder || 'End date'"
+
+            <!-- Select Dropdown -->
+            <USelect
+              v-else-if="filter.type === 'select'"
+              :items="filter.options"
+              :placeholder="filter.placeholder"
               :size="filter.size || 'md'"
+              :searchable="filter.searchable"
+              :model-value="filterValues[filter.key]"
+              @update:model-value="updateFilter(filter.key, $event)"
             />
-          </div>
+
+            <!-- Select Menu -->
+            <USelectMenu
+              v-else-if="filter.type === 'select-menu'"
+              :id="filter.key"
+              :items="filter.options"
+              :placeholder="filter.placeholder"
+              :size="filter.size || 'md'"
+              :class="filter.class || 'w-full'"
+              :model-value="filterValues[filter.key]"
+              @update:model-value="updateFilter(filter.key, $event.value)"
+            />
+
+            <!-- Date Range -->
+            <div v-else-if="filter.type === 'daterange'" class="flex space-x-2">
+              <UInput
+                type="datetime-local"
+                :placeholder="filter.startPlaceholder || 'Start date'"
+                :size="filter.size || 'md'"
+                :model-value="filterValues[filter.key]?.start"
+                @update:model-value="updateDateRange(filter.key, 'start', $event)"
+              />
+              <UInput
+                type="datetime-local"
+                :placeholder="filter.endPlaceholder || 'End date'"
+                :size="filter.size || 'md'"
+                :model-value="filterValues[filter.key]?.end"
+                @update:model-value="updateDateRange(filter.key, 'end', $event)"
+              />
+            </div>
+          </template>
         </template>
       </div>
-      
-      <!-- Clear Filters Button -->
-      <div v-if="showClearButton && hasActiveFilters" class="pt-2">
-        <UButton
-          variant="ghost"
-          size="sm"
-          icon="heroicons-x-mark"
-          @click="clearAllFilters"
-        >
-          Clear Filters
-        </UButton>
-      </div>
+      <div v-if="showClearButton && hasActiveFilters" class="pt-2 flex justify-end">
+              <UButton
+                variant="ghost"
+                size="sm"
+                icon="heroicons-x-mark"
+                @click="clearAllFilters"
+              >
+                Clear Filters
+            </UButton>
+          </div>
     </div>
   </UCard>
 </template>
@@ -102,21 +109,17 @@ const emit = defineEmits(['update:filters'])
 // Initialize filter values
 const filterValues = ref({})
 
-// Initialize default values
+// Initialize default values and keep in sync when filters change
 watchEffect(() => {
-  const initialValues = {}
   props.filters.forEach(filter => {
-    if (filter.type === 'daterange') {
-      initialValues[filter.key] = { start: '', end: '' }
-    } else {
-      initialValues[filter.key] = filter.defaultValue || (filter.type === 'select' ? 'all' : '')
+    if (!(filter.key in filterValues.value)) {
+      if (filter.type === 'daterange') {
+        filterValues.value[filter.key] = { start: '', end: '' }
+      } else {
+        filterValues.value[filter.key] = filter.defaultValue ?? (filter.type === 'select' ? 'all' : '')
+      }
     }
   })
-  
-  // Only set if not already initialized
-  if (Object.keys(filterValues.value).length === 0) {
-    filterValues.value = initialValues
-  }
 })
 
 const updateFilter = (key, value) => {
@@ -138,7 +141,7 @@ const clearAllFilters = () => {
     if (filter.type === 'daterange') {
       clearedValues[filter.key] = { start: '', end: '' }
     } else {
-      clearedValues[filter.key] = filter.type === 'select' ? 'all' : ''
+      clearedValues[filter.key] = filter.defaultValue ?? (filter.type === 'select' ? 'all' : '')
     }
   })
   filterValues.value = clearedValues
@@ -147,6 +150,7 @@ const clearAllFilters = () => {
 
 const hasActiveFilters = computed(() => {
   return props.filters.some(filter => {
+    if (filter.isFilter === false) return false
     const value = filterValues.value[filter.key]
     if (filter.type === 'daterange') {
       return value?.start || value?.end
