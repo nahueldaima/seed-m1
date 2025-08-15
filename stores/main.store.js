@@ -45,6 +45,23 @@ export const useMainStore = defineStore('main', {
 
       this.processes = data || [];
     },
+    async processesCreate(payload) {
+      const { apiRequest } = useApi();
+      const { data, error } = await apiRequest('/api/internal/processes/processes', {
+        method: 'POST',
+        body: {
+          ...payload,
+          environment: payload?.environment?.map(e => e.value)
+        },
+        showSuccessToast: true,
+        successMessage: 'Process created'
+      });
+      if (!error && data) {
+        const created = Array.isArray(data) ? data[0] : data;
+        this.processes = [created, ...this.processes];
+      }
+      return { data, error };
+    },
   },
   persist: true,
 })

@@ -101,7 +101,9 @@ const expanded = ref({})
     class="flex-1"
   >
     <template #expanded="{ row }">
-      <pre>{{ row.original }}</pre>
+      <slot name="expanded" :row="row">
+        <pre>{{ row.original }}</pre>
+      </slot>
     </template>
   </UTable>
 </template>
