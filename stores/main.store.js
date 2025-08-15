@@ -49,7 +49,10 @@ export const useMainStore = defineStore('main', {
       const { apiRequest } = useApi();
       const { data, error } = await apiRequest('/api/internal/processes/processes', {
         method: 'POST',
-        body: payload,
+        body: {
+          ...payload,
+          environment: payload?.environment?.map(e => e.value)
+        },
         showSuccessToast: true,
         successMessage: 'Process created'
       });

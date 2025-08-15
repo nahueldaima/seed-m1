@@ -22,7 +22,14 @@ const internalProcessesCreate = async (event) => {
     try {
         const supabase = event.supabase || event.context.supabase;
         const body = await readBody(event);
-        const data = await ProcessModel.create(supabase, body);
+        // if environment its an array, create as many processes as environments
+        let data = []
+        if (Array.isArray(body.environment)) {
+            data = await Promise.all(body.environment.map(env => ProcessModel.create(supabase, { ...body, environment: env })));
+            return data;
+        } else {
+            data = await ProcessModel.create(supabase, body);
+        }
         return Array.isArray(data) ? data[0] : data;
     } catch (error) {
         createResponseError(error);

@@ -25,10 +25,21 @@
             v-else-if="filter.type === 'select'"
             :model-value="filterValues[filter.key]"
             @update:model-value="updateFilter(filter.key, $event)"
-            :options="filter.options"
+            :items="filter.options"
             :placeholder="filter.placeholder"
             :size="filter.size || 'md'"
             :searchable="filter.searchable"
+          />
+          
+          <USelectMenu
+            v-else-if="filter.type === 'select-menu'"
+            :items="filter.options"
+            :model-value="filterValues[filter.key]"
+            @update:model-value="updateFilter(filter.key, $event.value)"
+            :placeholder="filter.placeholder"
+            :id="filter.key"
+            :size="filter.size || 'md'"
+            :class="filter.class || 'w-full'"
           />
           
           <!-- Date Range -->

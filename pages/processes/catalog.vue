@@ -4,7 +4,6 @@
     <PageHeader title="Process Catalog" description="Browse all available processes">
       <template #actions>
         <div class="flex items-center gap-2">
-          <EnvironmentSelector />
           <UButton
             v-if="canCreate"
             icon="i-heroicons-plus"
@@ -20,10 +19,21 @@
     <!-- Filters -->
     <FiltersSection :filters="filterConfig" @update:filters="handleFiltersUpdate" />
 
+    <!-- Refresh button -->
+    <div class="flex justify-end">
+      <UButton icon="i-heroicons-arrow-path" color="primary" @click="refreshProcesses">
+        Refresh
+      </UButton>
+    </div>
+
     <!-- Processes Table -->
     <LibDataTable :rows="filteredProcesses" :columns="columns">
       <template #expanded="{ row }">
         <dl class="p-4 text-sm grid gap-x-6 gap-y-4 md:grid-cols-2">
+            <div>
+            <dt class="font-medium text-gray-700">Description</dt>
+            <dd class="capitalize">{{ row.original.name || '-' }}</dd>
+            </div>
           <div>
             <dt class="font-medium text-gray-700">Description</dt>
             <dd>{{ row.original.description || '-' }}</dd>
@@ -31,7 +41,7 @@
           <div>
             <dt class="font-medium text-gray-700">Account</dt>
             <dd>
-              <UBadge v-if="row.original.account" variant="subtle" color="neutral" class="capitalize">
+              <UBadge v-if="row.original.account" variant="subtle" color="neutral">
                 {{ row.original.account }}
               </UBadge>
               <span v-else>-</span>
@@ -54,6 +64,12 @@
                 View logs
               </a>
               <span v-else>-</span>
+            </dd>
+          </div>
+          <div>
+            <dt class="font-medium text-gray-700">CRON Details</dt>
+            <dd>
+              <pre>{{ row.original.cron_details || '-' }}</pre>
             </dd>
           </div>
           <div>
@@ -94,31 +110,43 @@
       <template #content>
         <UCard>
           <template #header>
-            <h3 class="text-lg font-semibold">Create Process</h3>
+            <h3 class="text-lg font-semibold">Crear proceso</h3>
           </template>
           <form class="space-y-4" @submit.prevent="createProcess">
             <div>
               <label class="block text-sm font-medium mb-1">Name</label>
-              <UInput v-model="newProcess.name" required />
+              <UInput v-model="newProcess.name" required class="w-full" />
             </div>
             <div>
               <label class="block text-sm font-medium mb-1">Description</label>
-              <UInput v-model="newProcess.description" />
+              <UInput v-model="newProcess.description" class="w-full" />
             </div>
             <div>
               <label class="block text-sm font-medium mb-1">Account</label>
-              <UInput v-model="newProcess.account" />
+              <UInput v-model="newProcess.account" class="w-full" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Log Group</label>
+              <UInput v-model="newProcess.log_group" class="w-full" />
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">Log Stream</label>
+              <UInput v-model="newProcess.log_stream" class="w-full" />
             </div>
             <div>
               <label class="block text-sm font-medium mb-1">Environment</label>
-              <USelect v-model="newProcess.environment" :options="envOptions" placeholder="Select environment" />
+              <USelectMenu v-model="newProcess.environment" :items="envOptions" placeholder="Select environment" multiple class="w-full"/>
+            </div>
+            <div>
+              <label class="block text-sm font-medium mb-1">CRON Details</label>
+              <UInput v-model="newProcess.cron_details" class="w-full" />
             </div>
             <div class="flex justify-end gap-2 pt-2">
               <UButton type="button" variant="ghost" color="neutral" @click="isCreateOpen = false">
                 Cancel
               </UButton>
               <UButton type="submit" color="primary">
-                Create
+                Crear
               </UButton>
             </div>
           </form>
@@ -133,7 +161,8 @@ import { onMounted, reactive, ref, computed, watch } from 'vue'
 
 const mainStore = useMainStore()
 const processes = computed(() => mainStore.processes)
-const canCreate = computed(() => mainStore.getPermissions?.includes('PROCESSES_WRITE'))
+// const canCreate = computed(() => mainStore.getPermissions?.includes('PROCESSES_WRITE'))
+const canCreate = ref(true)
 const currentEnv = computed(() => mainStore.getCurrentEnv.value)
 
 onMounted(async () => {
@@ -144,15 +173,13 @@ onMounted(async () => {
 
 const filterValues = ref({
   search: '',
-  account: 'all'
+  account: 'all',
+  environment: 'all'
 })
 
-const processesByEnv = computed(() =>
-  processes.value.filter(p => p.environment === currentEnv.value)
-)
 
 const accounts = computed(() =>
-  Array.from(new Set(processesByEnv.value.map(p => p.account).filter(Boolean)))
+  Array.from(new Set(processes.value.map(p => p.account).filter(Boolean)))
 )
 
 const accountsOptions = computed(() => [
@@ -162,28 +189,40 @@ const accountsOptions = computed(() => [
 
 watch(currentEnv, () => {
   filterValues.value.account = 'all'
+  filterValues.value.environment = 'all'
 })
+
 
 const filterConfig = computed(() => [
   { key: 'search', type: 'search', placeholder: 'Search processes...' },
-  { key: 'account', type: 'select', placeholder: 'All Accounts', options: accountsOptions.value, searchable: true }
+  { key: 'account', type: 'select-menu', placeholder: 'All Accounts', options: accountsOptions.value},
+  { key: 'environment', type: 'select-menu', placeholder: 'All Environments', options: envOptions.value}
 ])
 
 const handleFiltersUpdate = (newFilters) => {
-  filterValues.value = { ...newFilters }
+  filterValues.value = { ...filterValues.value, ...newFilters }
 }
 
 const filteredProcesses = computed(() => {
-  let list = processesByEnv.value
+  let list = processes.value
   const term = filterValues.value.search?.toLowerCase()
   if (term) {
     list = list.filter(p =>
-      [p.name, p.description].some(v => v && v.toLowerCase().includes(term))
+      [p.name, p.account, p.description].some(v => v && v.toLowerCase().includes(term))
     )
   }
-  if (filterValues.value.account !== 'all') {
+
+  console.log(filterValues.value)
+
+  if (filterValues.value.environment !== 'all' && filterValues.value.environment !== '') {
+    list = list.filter(p => p.environment === filterValues.value.environment)
+  }
+
+
+  if (filterValues.value.account !== 'all' && filterValues.value.account !== '') {
     list = list.filter(p => p.account === filterValues.value.account)
   }
+
   return list
 })
 
@@ -209,12 +248,21 @@ const openCreateModal = () => {
   newProcess.name = ''
   newProcess.description = ''
   newProcess.account = ''
-  newProcess.environment = currentEnv.value
+  newProcess.environment = ''
+  newProcess.log_group = ''
+  newProcess.log_stream = ''
+  newProcess.cron_details = ''
   isCreateOpen.value = true
 }
 
+const refreshProcesses = async () => {
+  await mainStore.processesGetAll()
+}
+
 const createProcess = async () => {
-  await mainStore.processesCreate({ ...newProcess })
+  await mainStore.processesCreate({ ...newProcess });
+  await refreshProcesses();
   isCreateOpen.value = false
 }
+
 </script>

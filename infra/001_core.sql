@@ -72,7 +72,8 @@ create table processes (
   updated_at  timestamptz default now(),
   log_group   text,
   log_stream  text,
-  environment environment
+  environment environment,
+  cron_details text
 );
 
 create table processes_runs (
