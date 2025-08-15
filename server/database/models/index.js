@@ -13,4 +13,5 @@ export { default as UserGroupModel } from './user-group.model.js'
 export { default as GroupPermissionModel } from './group-permission.model.js'
 
 // MongoDB configuration model
-export { default as MongoCollectionModel } from './mongo-collection.model.js' 
+export { default as MongoCollectionModel } from './mongo-collection.model.js'
+export { default as UserCredentialModel } from './user-credential.model.js'

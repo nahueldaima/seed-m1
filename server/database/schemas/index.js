@@ -7,6 +7,7 @@ export * from './permissions.schema.js';
 export * from './user-groups.schema.js';
 export * from './group-permissions.schema.js';
 export * from './user-profiles.schema.js';
+export * from './user-credentials.schema.js';
 
 // MongoDB configuration
 export * from './mongo-collections.schema.js';
