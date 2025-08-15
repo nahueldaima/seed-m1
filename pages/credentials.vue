@@ -8,41 +8,42 @@
     <UCard class="max-w-2xl mx-auto">
       <UForm :state="form" @submit.prevent="handleSubmit" class="space-y-6">
         <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          <UFormGroup label="AWS Access Key">
+          <UFormField label="AWS Access Key">
             <UInput
               :type="showPlain ? 'text' : 'password'"
+              
               v-model="form.aws_access_key"
               :placeholder="existing.aws_access_key && !showPlain ? '********' : ''"
               class="w-full"
             />
-          </UFormGroup>
+          </UFormField>
 
-          <UFormGroup label="AWS Secret Key">
+          <UFormField label="AWS Secret Key">
             <UInput
               :type="showPlain ? 'text' : 'password'"
               v-model="form.aws_secret_key"
               :placeholder="existing.aws_secret_key && !showPlain ? '********' : ''"
               class="w-full"
             />
-          </UFormGroup>
+          </UFormField>
 
-          <UFormGroup label="Mongo Username">
+          <UFormField label="Mongo Username">
             <UInput
               :type="showPlain ? 'text' : 'password'"
               v-model="form.mongo_username"
               :placeholder="existing.mongo_username && !showPlain ? '********' : ''"
               class="w-full"
             />
-          </UFormGroup>
+          </UFormField>
 
-          <UFormGroup label="Mongo Password">
+          <UFormField label="Mongo Password">
             <UInput
               :type="showPlain ? 'text' : 'password'"
               v-model="form.mongo_password"
               :placeholder="existing.mongo_password && !showPlain ? '********' : ''"
               class="w-full"
             />
-          </UFormGroup>
+          </UFormField>
         </div>
 
         <div class="flex justify-between items-center">
@@ -78,7 +79,7 @@ const existing = reactive({
 });
 
 const showPlain = ref(false);
-const canView = computed(() => mainStore.permissions.includes('CREDENTIALS_VIEW'));
+const canView = ref(true);
 
 const fetchCredentials = async () => {
   const { data } = await apiRequest('/api/internal/credentials');

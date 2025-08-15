@@ -42,6 +42,17 @@ create table user_profiles (
   updated_at timestamptz default now()
 );
 
+-- User credentials (stores encrypted credentials for external services)
+create table user_credentials (
+  user_id uuid references auth.users on delete cascade primary key,
+  aws_access_key text,
+  aws_secret_key text,
+  mongo_username text,
+  mongo_password text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
 -- MongoDB collection mappings (dynamic configuration)
 create table mongo_collections (
   id uuid primary key default gen_random_uuid(),
@@ -130,6 +141,11 @@ CREATE TRIGGER update_user_profiles_updated_at
     FOR EACH ROW 
     EXECUTE FUNCTION update_updated_at_column();
 
+CREATE TRIGGER update_user_credentials_updated_at 
+    BEFORE UPDATE ON user_credentials 
+    FOR EACH ROW 
+    EXECUTE FUNCTION update_updated_at_column();
+
 CREATE TRIGGER update_mongo_collections_updated_at 
     BEFORE UPDATE ON mongo_collections 
     FOR EACH ROW 
@@ -162,6 +178,7 @@ create index idx_processes_events_uuid on processes_events(uuid);
 create index idx_processes_events_thread_id on processes_events(thread_id);
 create index idx_processes_events_last_event on processes_events(last_event) where last_event = true;
 create index idx_user_profiles_is_superadmin on user_profiles(is_superadmin) where is_superadmin = true;
+create index idx_user_credentials_user_id on user_credentials(user_id);
 
 -- Row Level Security (RLS)
 alter table groups enable row level security;
@@ -169,6 +186,7 @@ alter table permissions enable row level security;
 alter table user_groups enable row level security;
 alter table group_permissions enable row level security;
 alter table user_profiles enable row level security;
+alter table user_credentials enable row level security;
 alter table mongo_collections enable row level security;
 alter table processes enable row level security;
 alter table processes_runs enable row level security;
@@ -180,6 +198,7 @@ DROP POLICY IF EXISTS "AuthUsersCanAccess" ON public.permissions;
 DROP POLICY IF EXISTS "AuthUsersCanAccess" ON public.user_groups;
 DROP POLICY IF EXISTS "AuthUsersCanAccess" ON public.group_permissions;
 DROP POLICY IF EXISTS "AuthUsersCanAccess" ON public.user_profiles;
+DROP POLICY IF EXISTS "AuthUsersCanAccess" ON public.user_credentials;
 DROP POLICY IF EXISTS "AuthUsersCanAccess" ON public.mongo_collections;
 DROP POLICY IF EXISTS "AuthUsersCanAccess" ON public.processes;
 DROP POLICY IF EXISTS "AuthUsersCanAccess" ON public.processes_runs;
@@ -212,6 +231,11 @@ CREATE POLICY "AuthUsersCanAccess" ON "public"."user_profiles"
 FOR ALL
 TO authenticated
 USING (true);
+
+CREATE POLICY "AuthUsersCanAccess" ON "public"."user_credentials"
+FOR ALL
+TO authenticated
+USING (auth.uid() = user_id);
 
 CREATE POLICY "AuthUsersCanAccess" ON "public"."mongo_collections"
 FOR ALL

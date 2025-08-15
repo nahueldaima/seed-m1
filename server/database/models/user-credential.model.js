@@ -14,8 +14,8 @@ class UserCredentialModel {
     const validatedData = CreateUserCredentialSchema.parse(payload);
     const query = supabase.from(this.TABLE_NAME)
       .upsert(validatedData, { onConflict: 'user_id' })
+      .eq('user_id', userId)
       .select()
-      .limit(1);
     return executeSupabaseQuery(query);
   }
 
@@ -26,7 +26,6 @@ class UserCredentialModel {
       .update(validatedData)
       .eq('user_id', userId)
       .select()
-      .limit(1);
     return executeSupabaseQuery(query);
   }
 }
