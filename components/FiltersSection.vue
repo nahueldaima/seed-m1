@@ -28,6 +28,7 @@
             :options="filter.options"
             :placeholder="filter.placeholder"
             :size="filter.size || 'md'"
+            :searchable="filter.searchable"
           />
           
           <!-- Date Range -->

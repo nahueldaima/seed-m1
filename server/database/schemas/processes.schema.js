@@ -7,6 +7,7 @@ export const ProcessSchema = z.object({
   description: z.string().nullable().optional(),
   default_meta: z.record(z.any()).nullable().optional(), // jsonb field
   account: z.string().nullable().optional(),
+  environment: z.string().nullable().optional(),
   mongo_filters: z.record(z.any()).default({}), // jsonb field
   created_at: z.date().optional(),
   updated_at: z.date().optional()
