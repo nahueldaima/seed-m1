@@ -1,51 +1,55 @@
 <template>
-  <div class="space-y-6">
+  <div class="space-y-6 p-4 sm:p-6">
     <div>
       <h1 class="text-3xl font-bold tracking-tight">Credentials</h1>
       <p class="text-muted-foreground mt-2">Configure external service credentials</p>
     </div>
 
-    <UCard>
-      <UForm :state="form" @submit.prevent="handleSubmit">
-        <UFormGroup label="AWS Access Key" class="mb-4">
-          <div class="flex items-center space-x-2">
+    <UCard class="max-w-2xl mx-auto">
+      <UForm :state="form" @submit.prevent="handleSubmit" class="space-y-6">
+        <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <UFormGroup label="AWS Access Key">
             <UInput
               :type="showPlain ? 'text' : 'password'"
               v-model="form.aws_access_key"
               :placeholder="existing.aws_access_key && !showPlain ? '********' : ''"
+              class="w-full"
             />
-          </div>
-        </UFormGroup>
+          </UFormGroup>
 
-        <UFormGroup label="AWS Secret Key" class="mb-4">
-          <UInput
-            :type="showPlain ? 'text' : 'password'"
-            v-model="form.aws_secret_key"
-            :placeholder="existing.aws_secret_key && !showPlain ? '********' : ''"
-          />
-        </UFormGroup>
+          <UFormGroup label="AWS Secret Key">
+            <UInput
+              :type="showPlain ? 'text' : 'password'"
+              v-model="form.aws_secret_key"
+              :placeholder="existing.aws_secret_key && !showPlain ? '********' : ''"
+              class="w-full"
+            />
+          </UFormGroup>
 
-        <UFormGroup label="Mongo Username" class="mb-4">
-          <UInput
-            :type="showPlain ? 'text' : 'password'"
-            v-model="form.mongo_username"
-            :placeholder="existing.mongo_username && !showPlain ? '********' : ''"
-          />
-        </UFormGroup>
+          <UFormGroup label="Mongo Username">
+            <UInput
+              :type="showPlain ? 'text' : 'password'"
+              v-model="form.mongo_username"
+              :placeholder="existing.mongo_username && !showPlain ? '********' : ''"
+              class="w-full"
+            />
+          </UFormGroup>
 
-        <UFormGroup label="Mongo Password" class="mb-4">
-          <UInput
-            :type="showPlain ? 'text' : 'password'"
-            v-model="form.mongo_password"
-            :placeholder="existing.mongo_password && !showPlain ? '********' : ''"
-          />
-        </UFormGroup>
+          <UFormGroup label="Mongo Password">
+            <UInput
+              :type="showPlain ? 'text' : 'password'"
+              v-model="form.mongo_password"
+              :placeholder="existing.mongo_password && !showPlain ? '********' : ''"
+              class="w-full"
+            />
+          </UFormGroup>
+        </div>
 
         <div class="flex justify-between items-center">
           <UButton
             v-if="canView"
             @click.prevent="toggleView"
-            variant="ghost"
+            variant="outline"
             :label="showPlain ? 'Hide' : 'View'"
           />
           <UButton type="submit" color="primary">Save</UButton>

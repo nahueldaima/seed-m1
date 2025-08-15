@@ -131,6 +131,11 @@ const navigation = [
     ]
   },
   {
+    name: 'Credentials',
+    href: '/credentials',
+    icon: 'i-heroicons-key'
+  },
+  {
     name: 'Profile',
     href: '/profile',
     icon: 'i-heroicons-user'
