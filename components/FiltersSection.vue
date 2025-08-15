@@ -1,11 +1,17 @@
 <template>
   <UCard>
     <template #header>
-      <div class="flex items-center">
-        <Icon name="heroicons-funnel" class="w-4 h-4 mr-2" />
-        <h3 class="text-lg font-semibold">{{ title }}</h3>
+      <div class="flex items-center justify-between">
+        <div class="flex items-center">
+          <Icon name="heroicons-funnel" class="w-4 h-4 mr-2" />
+          <h3 class="text-lg font-semibold">{{ title }}</h3>
+        </div>
+        <div class="flex justify-end"> 
+          <slot name="subheader" />
+        </div>
       </div>
     </template>
+
     
     <div class="p-6 space-y-4">
       <div :class="`grid grid-cols-1 md:grid-cols-${gridCols} gap-4`">
@@ -51,18 +57,16 @@
           </template>
         </template>
       </div>
-      
-      <!-- Clear Filters Button -->
-      <div v-if="showClearButton && hasActiveFilters" class="pt-2">
-        <UButton
-          variant="ghost"
-          size="sm"
-          icon="heroicons-x-mark"
-          @click="clearAllFilters"
-        >
-          Clear Filters
-        </UButton>
-      </div>
+      <div v-if="showClearButton && hasActiveFilters" class="pt-2 flex justify-end">
+              <UButton
+                variant="ghost"
+                size="sm"
+                icon="heroicons-x-mark"
+                @click="clearAllFilters"
+              >
+                Clear Filters
+            </UButton>
+          </div>
     </div>
   </UCard>
 </template>

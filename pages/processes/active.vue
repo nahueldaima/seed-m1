@@ -4,12 +4,7 @@
         <PageHeader title="Job Dashboard" description="Monitor and manage your job executions">
             <template #actions>
                 <div class="flex items-center gap-3">
-                    <EnvironmentSelector />
-                    <UButton
-                        :color="realtimeEnabled ? 'primary' : 'gray'"
-                        icon="heroicons-bolt"
-                        @click="toggleRealtime"
-                    >{{ realtimeEnabled ? 'Realtime On' : 'Realtime Off' }}</UButton>
+                   
                     <!-- <UButton
               icon="heroicons-play"
               size="lg"
@@ -33,7 +28,18 @@
         </div>
 
         <!-- Filters -->
-        <FiltersSection :filters="filterConfig" @update:filters="handleFiltersUpdate" />
+        <FiltersSection :filters="filterConfig" @update:filters="handleFiltersUpdate">
+            <template #subheader>
+                <div class="flex items-center gap-3">
+                    <EnvironmentSelector />
+                    <UButton
+                        :color="realtimeEnabled ? 'primary' : 'gray'"
+                        icon="heroicons-bolt"
+                        @click="toggleRealtime"
+                    >{{ realtimeEnabled ? 'Realtime On' : 'Realtime Off' }}</UButton>
+                </div>
+            </template>
+        </FiltersSection>
  
       
         <!-- Jobs Table -->
