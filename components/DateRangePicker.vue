@@ -4,7 +4,7 @@
       {{ rangeLabel }}
     </UButton>
 
-    <template #panel>
+    <template #content>
       <div class="p-4 w-80 space-y-4">
         <!-- Quick presets -->
         <div class="flex items-center gap-2">
@@ -99,12 +99,13 @@ const presets = [
 const tempRange = ref(null)
 const startTime = ref('00:00')
 const endTime = ref('00:00')
+const customLabel = ref('')
 
 watch(
   () => props.modelValue,
   (val) => {
     if (val.start && val.end) {
-      tempRange.value = [new Date(val.start), new Date(val.end)]
+      tempRange.value = { start: new Date(val.start), end: new Date(val.end) }
       startTime.value = formatTime(val.start)
       endTime.value = formatTime(val.end)
     } else {
@@ -157,12 +158,13 @@ function selectPreset(preset) {
       break
   }
   emit('update:modelValue', { start, end })
+  customLabel.value = preset.label
   isOpen.value = false
 }
 
 function apply() {
-  if (tab.value === 'absolute' && tempRange.value) {
-    const [startDate, endDate] = tempRange.value
+  if (tab.value === 'absolute' && tempRange.value?.start && tempRange.value?.end) {
+    const { start: startDate, end: endDate } = tempRange.value
     const [sh, sm] = startTime.value.split(':').map(Number)
     const [eh, em] = endTime.value.split(':').map(Number)
     const start = new Date(startDate)
@@ -170,6 +172,7 @@ function apply() {
     const end = new Date(endDate)
     end.setHours(eh, em, 0, 0)
     emit('update:modelValue', { start, end })
+    customLabel.value = ''
   } else if (tab.value === 'relative') {
     const end = new Date()
     const start = new Date(end)
@@ -189,6 +192,7 @@ function apply() {
         break
     }
     emit('update:modelValue', { start, end })
+    customLabel.value = formatRelative(relative.value)
   }
   showCustom.value = false
   isOpen.value = false
@@ -202,15 +206,16 @@ function clear() {
   emit('update:modelValue', { start: null, end: null })
   tempRange.value = null
   relative.value = { amount: 1, unit: 'm' }
+  customLabel.value = ''
 }
 
 function formatDate(date) {
-  return new Intl.DateTimeFormat('en', {
-    month: 'short',
-    day: 'numeric',
+  return new Date(date).toLocaleString(undefined, {
+    day: '2-digit',
+    month: '2-digit',
     hour: '2-digit',
     minute: '2-digit'
-  }).format(new Date(date))
+  })
 }
 
 function formatTime(date) {
@@ -219,9 +224,16 @@ function formatTime(date) {
 }
 
 const rangeLabel = computed(() => {
+  if (customLabel.value) {
+    return customLabel.value
+  }
   if (props.modelValue.start && props.modelValue.end) {
     return `${formatDate(props.modelValue.start)} - ${formatDate(props.modelValue.end)}`
   }
   return 'Select range'
 })
+
+function formatRelative({ amount, unit }) {
+  return `${amount}${unit}`
+}
 </script>
