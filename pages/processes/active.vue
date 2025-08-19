@@ -27,6 +27,12 @@
             <StatCard title="Failed" :value="failedJobs" icon="heroicons-exclamation-circle" color="red" />
         </div>
 
+
+        <DateRangePicker v-model="range" />
+  <p v-if="range.start && range.end">
+    Selected: {{ range.start.toLocaleString() }} – {{ range.end.toLocaleString() }}
+  </p>
+
         <!-- Filters -->
         <FiltersSection :filters="filterConfig" @update:filters="handleFiltersUpdate" />
  
@@ -45,6 +51,10 @@ const processes = computed(() => mainStore.processes)
 
 const supabase = useSupabaseClient()
 
+const range = ref({
+  start: null,
+  end: null
+})
 
 // Reactive state
 const loading = ref(false)
