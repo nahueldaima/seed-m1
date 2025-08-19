@@ -36,7 +36,7 @@ const internalGroupDetailsGet = async (event, id) => {
     return {
       ...group,
       permissions: perms.map(p => p.permissions),
-      users: users.map(u => u.user_profiles)
+      users: users.map(u => ({ id: u.user_id, ...u.user_profiles }))
     }
   } catch (error) {
     createResponseError(error)
