@@ -1,5 +1,5 @@
 import { UserCredentialModel } from '~/server/database/models';
-import { readBody, getQuery } from 'h3';
+import { readBody } from 'h3';
 
 const maskValue = (val) => (val ? '********' : null);
 

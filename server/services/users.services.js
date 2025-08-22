@@ -1,5 +1,5 @@
 import { fetchUserAuthorisation } from '~/server/utils/permissions'
-import { UserProfileModel, UserGroupModel, GroupModel } from '~/server/database/models'
+import { UserProfileModel, UserGroupModel } from '~/server/database/models'
 import { createResponseError } from '~/server/utils/responses'
 import { readBody } from 'h3'
 import { createClient } from '@supabase/supabase-js'
@@ -16,7 +16,7 @@ const internalRetrieveUsersPermissionsGet = async (event) => {
 }
 
 // GET /api/internal/users
-const internalUsersListGet = async (event) => {
+const internalUsersListGet = async () => {
   try {
     const admin = getAdminClient()
     const { data: profiles } = await admin.from('user_profiles').select('id, display_name, user_groups ( groups ( id, name ))')
