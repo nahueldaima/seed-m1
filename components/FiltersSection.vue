@@ -1,13 +1,18 @@
 <template>
   <UCard>
     <template #header>
-      <div class="flex items-center">
-        <Icon name="heroicons-funnel" class="w-4 h-4 mr-2" />
-        <h3 class="text-lg font-semibold">{{ title }}</h3>
+      <div class="flex flex-col gap-2 sm:flex-row sm:justify-between sm:items-center">
+        <div class="flex items-center">
+          <Icon name="heroicons-funnel" class="w-4 h-4 mr-2" />
+          <h3 class="text-lg font-semibold">{{ title }}</h3>
+        </div>
+        <div>
+          <slot name="mainfilter" />
+        </div>
       </div>
     </template>
     
-    <div class="p-6 space-y-4">
+    <div class="space-y-4">
       <div :class="`grid grid-cols-1 md:grid-cols-${gridCols} gap-4`">
         <template v-for="filter in filters" :key="filter.key">
           <!-- Search Input -->

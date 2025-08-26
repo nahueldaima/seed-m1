@@ -1,11 +1,11 @@
 <template>
-  <UPopover v-model="isOpen" :popper="{ placement: 'bottom-start' }">
+  <UPopover v-model:open="isOpen" :popper="{ side: isMobile ? 'bottom' : 'bottom-start', strategy: 'fixed', sideOffset: 8 }">
     <UButton variant="outline" color="neutral" icon="heroicons-calendar" class="whitespace-nowrap">
       {{ rangeLabel }}
     </UButton>
 
     <template #content>
-      <div class="p-4 w-80 space-y-4">
+      <div class="p-4 sm:w-80 w-[calc(100vw-1.5rem)] max-h-[70vh] overflow-y-auto space-y-4">
         <!-- Quick presets -->
         <div class="flex items-center gap-2">
           <UButton
@@ -82,6 +82,21 @@ const emit = defineEmits(['update:modelValue'])
 const isOpen = ref(false)
 const showCustom = ref(false)
 const tab = ref('absolute')
+// Detect small screens to adjust popover placement/behavior
+const isMobile = ref(false)
+if (import.meta.client) {
+  const mediaQuery = window.matchMedia('(max-width: 640px)')
+  const updateIsMobile = () => {
+    isMobile.value = mediaQuery.matches
+  }
+  onMounted(() => {
+    updateIsMobile()
+    mediaQuery.addEventListener('change', updateIsMobile)
+  })
+  onBeforeUnmount(() => {
+    mediaQuery.removeEventListener('change', updateIsMobile)
+  })
+}
 const tabs = [
   { label: 'Absolute', slot: 'absolute', value: 'absolute' },
   { label: 'Relative', slot: 'relative', value: 'relative' }
@@ -138,6 +153,7 @@ function selectPreset(preset) {
     return
   }
   if (preset.action === 'custom') {
+    clear()
     showCustom.value = true
     return
   }
@@ -158,7 +174,7 @@ function selectPreset(preset) {
       break
   }
   emit('update:modelValue', { start, end })
-  customLabel.value = preset.label
+  customLabel.value = `Last ${preset.label}`
   isOpen.value = false
 }
 
@@ -172,7 +188,7 @@ function apply() {
     const end = new Date(endDate)
     end.setHours(eh, em, 0, 0)
     emit('update:modelValue', { start, end })
-    customLabel.value = ''
+    customLabel.value = `${formatDate(start)} - ${formatDate(end)}`
   } else if (tab.value === 'relative') {
     const end = new Date()
     const start = new Date(end)
