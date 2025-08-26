@@ -47,8 +47,27 @@ const internalGroupsCreatePost = async (event) => {
   try {
     const admin = getAdminClient()
     const body = await readBody(event)
-    const created = await GroupModel.create(admin, body)
-    return created?.[0]
+    
+    // Extract permissions and users from body
+    const { permission_ids, user_ids, ...groupData } = body
+    
+    // Create the group first
+    const created = await GroupModel.create(admin, groupData)
+    const group = created?.[0]
+    
+    if (group && group.id) {
+      // Add permissions if provided
+      if (permission_ids && permission_ids.length > 0) {
+        await GroupPermissionModel.replaceGroupPermissions(admin, group.id, permission_ids)
+      }
+      
+      // Add users if provided
+      if (user_ids && user_ids.length > 0) {
+        await UserGroupModel.replaceGroupUsers(admin, group.id, user_ids)
+      }
+    }
+    
+    return group
   } catch (error) {
     createResponseError(error)
   }
@@ -68,7 +87,9 @@ const internalGroupUpdatePut = async (event, id) => {
 const internalGroupDelete = async (event, id) => {
   try {
     const admin = getAdminClient()
-    await GroupModel.delete(admin, id)
+    await GroupModel.delete(admin, id);
+    await GroupPermissionModel.deleteAllPermissionsForGroup(admin, id);
+    await UserGroupModel.deleteAllUsersFromGroup(admin, id);
     return { success: true }
   } catch (error) {
     createResponseError(error)

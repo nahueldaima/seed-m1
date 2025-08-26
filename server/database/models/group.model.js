@@ -56,7 +56,7 @@ class GroupModel {
     // Validate input data
     const validatedData = CreateGroupSchema.parse(groupData)
     
-    const query = supabase.from(this.TABLE_NAME).insert(validatedData).select().limit(1)
+    const query = supabase.from(this.TABLE_NAME).insert(validatedData).select()
     return executeSupabaseQuery(query)
   }
 
@@ -74,7 +74,6 @@ class GroupModel {
       .update(validatedData)
       .eq('id', id)
       .select()
-      .limit(1)
     return executeSupabaseQuery(query)
   }
 
@@ -82,7 +81,7 @@ class GroupModel {
    * Delete group by ID
    */
   static async delete(supabase, id) {
-    const query = supabase.from(this.TABLE_NAME).delete().eq('id', id).select().limit(1)
+    const query = supabase.from(this.TABLE_NAME).delete().eq('id', id).select()
     return executeSupabaseQuery(query)
   }
 
@@ -90,7 +89,7 @@ class GroupModel {
    * Check if group exists
    */
   static async exists(supabase, id) {
-    const query = supabase.from(this.TABLE_NAME).select('id').eq('id', id).limit(1)
+    const query = supabase.from(this.TABLE_NAME).select('id').eq('id', id)
     
     try {
       await executeSupabaseQuery(query)
