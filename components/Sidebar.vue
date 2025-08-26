@@ -119,6 +119,11 @@ const navigation = [
         icon: 'i-heroicons-users'
       },
       {
+        name: 'Groups',
+        href: '/admin/groups',
+        icon: 'i-heroicons-users'
+      },
+      {
         name: 'Permissions',
         href: '/admin/permissions',
         icon: 'i-heroicons-shield-check'

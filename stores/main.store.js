@@ -27,8 +27,8 @@ export const useMainStore = defineStore('main', {
   },
   actions: {
     async fetchPermissions() {
-      const {apiRequest} = useApi();
-      const {data, error} =await apiRequest('/api/internal/user-data/permissions', {showSuccessToast: false});
+      const { apiRequest } = useApi();
+      const { data } = await apiRequest('/api/internal/user-data/permissions', { showSuccessToast: false });
 
       this.permissions = data?.perms || [];
     },
@@ -40,8 +40,8 @@ export const useMainStore = defineStore('main', {
       }
     },
     async processesGetAll() {
-      const {apiRequest} = useApi();
-      const {data, error} =await apiRequest('/api/internal/processes/processes', {showSuccessToast: false});
+      const { apiRequest } = useApi();
+      const { data } = await apiRequest('/api/internal/processes/processes', { showSuccessToast: false });
 
       this.processes = data || [];
     },

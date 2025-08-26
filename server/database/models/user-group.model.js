@@ -65,22 +65,29 @@ class UserGroupModel {
 
   /**
    * Find users for a specific group
-   */
+  */
   static async findUsersByGroupId(supabase, groupId) {
-    const query = supabase.from(this.TABLE_NAME)
-      .select(`
-        user_id,
-        user_profiles (
-          id,
-          display_name,
-          is_superadmin,
-          mongo_filters,
-          created_at,
-          updated_at
-        )
-      `)
+    // First get user IDs for the group
+    const idsQuery = supabase
+      .from(this.TABLE_NAME)
+      .select('user_id')
       .eq('group_id', groupId)
-    return executeSupabaseQuery(query)
+
+    const rows = await executeSupabaseQuery(idsQuery)
+    if (!rows.length) return []
+
+    // Then fetch profiles for those users
+    const profileQuery = supabase
+      .from('user_profiles')
+      .select('*')
+      .in('id', rows.map(r => r.user_id))
+
+    const profiles = await executeSupabaseQuery(profileQuery)
+
+    return rows.map(r => ({
+      user_id: r.user_id,
+      user_profiles: profiles.find(p => p.id === r.user_id) || null
+    }))
   }
 
   /**
@@ -271,4 +278,4 @@ class UserGroupModel {
   }
 }
 
-export default UserGroupModel 
+export default UserGroupModel
