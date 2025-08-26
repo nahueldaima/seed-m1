@@ -30,8 +30,9 @@
         <!-- Filters -->
         <FiltersSection :filters="filterConfig" @update:filters="handleFiltersUpdate">
             <template #subheader>
-                <div class="flex items-center gap-3">
+                <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
                     <EnvironmentSelector />
+                    <DateRangePicker v-model="filterValues.dateRange" />
                     <UButton
                         :color="realtimeEnabled ? 'primary' : 'gray'"
                         icon="heroicons-bolt"
@@ -40,12 +41,16 @@
                 </div>
             </template>
         </FiltersSection>
- 
       
         <!-- Jobs Table -->
-        <LibDataTable title="Job Runs" description="Current and recent job executions" :rows="processedValuesForTable"
-            :columns="tableColumns" :loading="loading" />
-        <div ref="loadMoreTrigger"></div>
+        <LibDataTable
+            title="Job Runs"
+            description="Current and recent job executions"
+            :rows="processedValuesForTable"
+            :columns="tableColumns"
+            :loading="loading"
+        />
+        <div ref="loadMoreTrigger" />
     </div>
 </template>
 
