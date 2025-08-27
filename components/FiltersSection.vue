@@ -5,6 +5,13 @@
         <div class="flex items-center">
           <Icon name="heroicons-funnel" class="w-4 h-4 mr-2" />
           <h3 class="text-lg font-semibold">{{ title }}</h3>
+          <UButton
+            variant="ghost"
+            size="sm"
+            class="ml-2"
+            icon="heroicons-arrow-path"
+            @click="refreshFilters"
+          />
         </div>
         <div class="flex justify-end"> 
           <slot name="subheader" />
@@ -104,7 +111,7 @@ const props = defineProps({
   }
 })
 
-const emit = defineEmits(['update:filters'])
+const emit = defineEmits(['update:filters', 'refreshFilters'])
 
 // Initialize filter values
 const filterValues = ref({})
@@ -126,6 +133,11 @@ const updateFilter = (key, value) => {
   filterValues.value[key] = value
   emit('update:filters', { ...filterValues.value })
 }
+
+const refreshFilters = () => {
+  emit('refreshFilters')
+}
+
 
 const updateDateRange = (key, type, value) => {
   if (!filterValues.value[key]) {

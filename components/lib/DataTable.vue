@@ -45,6 +45,10 @@ const normalizedColumns = computed(() => {
         if (col.type === 'datetime') {
           return h(NuxtTime, { datetime: value, day: 'numeric', hour: '2-digit', minute: '2-digit', month: 'numeric', year: 'numeric', locale: "es-ES" })
         }
+        
+        if (col.type === 'datetimeseconds') {
+          return h(NuxtTime, { datetime: value, day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', month: 'numeric', year: 'numeric', locale: "es-ES" })
+        }
 
         if (col.formatter) {
           return col.formatter(value, row.original)

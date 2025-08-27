@@ -28,11 +28,11 @@
         </div>
 
         <!-- Filters -->
-        <FiltersSection :filters="filterConfig" @update:filters="handleFiltersUpdate">
+        <FiltersSection :filters="filterConfig" @update:filters="handleFiltersUpdate" @refreshFilters="refreshFilters">
             <template #subheader>
                 <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
                     <EnvironmentSelector />
-                    <DateRangePicker v-model="filterValues.dateRange" />
+                    <DateRangePicker v-model="filterValues.dateRange" @update:model-value="handleDateRangeUpdate" />
                     <UButton
                         :color="realtimeEnabled ? 'primary' : 'gray'"
                         icon="heroicons-bolt"
@@ -56,13 +56,18 @@
 
 <script setup>
 import { onMounted, onUnmounted, watch, ref, computed } from 'vue'
+
+// -----------------------------------------------------------------------------
+// Composables and clients
+// -----------------------------------------------------------------------------
 const { apiRequest } = useApi();
 const mainStore = useMainStore()
 const processes = computed(() => mainStore.processes)
-
 const supabase = useSupabaseClient()
 
+// -----------------------------------------------------------------------------
 // Reactive state
+// -----------------------------------------------------------------------------
 const loading = ref(false)
 const realtimeEnabled = ref(false)
 const page = ref(0)
@@ -78,46 +83,20 @@ const filterValues = ref({
 })
 const processesRuns = ref([])
 const loadMoreTrigger = ref(null)
+
+// Non-reactive locals
 let observer
 let realtimeChannel
 
-// Filter configuration
+// -----------------------------------------------------------------------------
+// Filters
+// -----------------------------------------------------------------------------
 const filterConfig = ref([
     {
         key: 'search',
         type: 'search',
-        placeholder: 'Search jobs...',
+        placeholder: 'Buscar procesos...',
         icon: 'heroicons-magnifying-glass'
-    },
-    {
-        key: 'timeMode',
-        type: 'select',
-        placeholder: 'Time mode',
-        options: [
-            { label: 'Relative', value: 'relative' },
-            { label: 'Absolute', value: 'absolute' }
-        ],
-        defaultValue: 'relative',
-        isFilter: false
-    },
-    {
-        key: 'relative',
-        type: 'select',
-        placeholder: 'Relative time',
-        options: [
-            { label: 'Last 5 minutes', value: '5' },
-            { label: 'Last 10 minutes', value: '10' },
-            { label: 'Last 30 minutes', value: '30' },
-            { label: 'Last 60 minutes', value: '60' }
-        ],
-        show: (values) => values.timeMode === 'relative'
-    },
-    {
-        key: 'dateRange',
-        type: 'daterange',
-        startPlaceholder: 'Start date',
-        endPlaceholder: 'End date',
-        show: (values) => values.timeMode === 'absolute'
     },
     {
         key: 'status',
@@ -142,12 +121,42 @@ const filterConfig = ref([
     }
 ])
 
+// Keep the process options in sync with the store
 watch(processes, (newVal) => {
     const processFilter = filterConfig.value.find(f => f.key === 'process')
     if (processFilter) {
         processFilter.options = [{ label: 'All Processes', value: 'all' }, ...newVal.map(p => ({ label: p.name, value: p.id }))]
     }
 }, { immediate: true })
+
+// Filter handlers
+const handleDateRangeUpdate = (newVal) => {
+    filterValues.value.dateRange = newVal
+    handleFiltersUpdate(filterValues.value)
+}
+
+const handleFiltersUpdate = (newFilters) => {
+    filterValues.value = { ...newFilters }
+    retrieveProcessesRuns(true)
+}
+
+const refreshFilters = () => {
+    retrieveProcessesRuns(true)
+}
+
+// -----------------------------------------------------------------------------
+// Table
+// -----------------------------------------------------------------------------
+const getStatusColor = (status) => {
+    const colors = {
+        STARTED: 'neutral',
+        RUNNING: 'neutral',
+        WARNING: 'warning',
+        SUCCESS: 'success',
+        FAIL: 'error'
+    }
+    return colors[status] || 'neutral'
+}
 
 // Table columns with enhanced configuration
 const tableColumns = [
@@ -161,12 +170,11 @@ const tableColumns = [
         props: { size: 'xl' },
         colorResolver: (row) => getStatusColor(row.status)
     },
-    
     {
         key: 'created_at',
         id: 'created_at',
         label: 'Inicio',
-        type: 'datetime'
+        type: 'datetimeseconds'
     },
     {
         key: 'duration_ms',
@@ -178,12 +186,14 @@ const tableColumns = [
         key: 'updated_at',
         id: 'updated_at',
         label: 'Última actualización',
-        type: 'datetime'
+        type: 'datetimeseconds'
     },
     { key: 'finished', id: 'finished', label: 'Finalizado', formatter: (value) => value ? 'Si' : 'No' }
 ]
 
+// -----------------------------------------------------------------------------
 // Computed properties
+// -----------------------------------------------------------------------------
 const runningJobs = computed(() => processesRuns.value.filter(j => ['RUNNING', 'STARTED'].includes(j.status)).length)
 const completedJobs = computed(() => processesRuns.value.filter(j => j.status === 'SUCCESS').length)
 const failedJobs = computed(() => processesRuns.value.filter(j => j.status === 'FAIL').length)
@@ -197,28 +207,9 @@ const processedValuesForTable = computed(() => {
     })
 })
 
-// Methods
-const getStatusColor = (status) => {
-    const colors = {
-        STARTED: 'neutral',
-        RUNNING: 'neutral',
-        WARNING: 'warning',
-        SUCCESS: 'success',
-        FAIL: 'error'
-    }
-    return colors[status] || 'neutral'
-}
-
-const handleFiltersUpdate = (newFilters) => {
-    if (newFilters.timeMode === 'relative') {
-        newFilters.dateRange = { start: '', end: '' }
-    } else if (newFilters.timeMode === 'absolute') {
-        newFilters.relative = ''
-    }
-    filterValues.value = { ...newFilters }
-    retrieveProcessesRuns(true)
-}
-
+// -----------------------------------------------------------------------------
+// Data fetching
+// -----------------------------------------------------------------------------
 const retrieveProcessesRuns = async (reset = false) => {
     if (loading.value || (!hasMore.value && !reset)) return
     loading.value = true
@@ -255,18 +246,9 @@ const retrieveProcessesRuns = async (reset = false) => {
         params.set('processId', filterValues.value.process)
     }
 
-    if (filterValues.value.timeMode === 'relative' && filterValues.value.relative) {
-        const mins = Number(filterValues.value.relative)
-        if (!isNaN(mins)) {
-            const fromDate = new Date(Date.now() - mins * 60000)
-            if (!isNaN(fromDate)) {
-                params.set('from', fromDate.toISOString())
-            }
-        }
-    } else if (
-        filterValues.value.timeMode === 'absolute' &&
-        filterValues.value.dateRange.start &&
-        filterValues.value.dateRange.end
+    if (
+        filterValues?.value?.dateRange?.start &&
+        filterValues?.value?.dateRange?.end
     ) {
         const startDate = new Date(filterValues.value.dateRange.start)
         const endDate = new Date(filterValues.value.dateRange.end)
@@ -290,6 +272,9 @@ const retrieveProcessesRuns = async (reset = false) => {
     loading.value = false
 }
 
+// -----------------------------------------------------------------------------
+// Realtime subscriptions
+// -----------------------------------------------------------------------------
 const subscribeToProcessesRuns = () => {
     realtimeChannel = supabase.channel('realtime:processes_runs').on(
         'postgres_changes',
@@ -328,7 +313,9 @@ const toggleRealtime = () => {
     }
 }
 
-// on Mounted
+// -----------------------------------------------------------------------------
+// Lifecycle
+// -----------------------------------------------------------------------------
 onMounted(async () => {
     await retrieveProcessesRuns(true)
 
@@ -352,10 +339,8 @@ watch(() => mainStore.mainEnv, () => {
     }
 })
 
-// on Unmounted
 onUnmounted(() => {
     observer?.disconnect()
     unsubscribeFromProcessesRuns()
 })
-
 </script>
