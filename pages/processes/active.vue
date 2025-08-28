@@ -44,12 +44,30 @@
       
         <!-- Jobs Table -->
         <LibDataTable
-            title="Job Runs"
-            description="Current and recent job executions"
+            title="Process Runs"
+            description="Current and recent processes executions"
             :rows="processedValuesForTable"
-            :columns="tableColumns"
+            :columns="processesTableColumns"
             :loading="loading"
-        />
+            @update:expanded="handleExpandedUpdate"
+        >
+            <template #expanded="{ row }">
+                <div>
+                    <UProgress animation="swing" v-if="rowState[row?.original?.id || row?.id]?.state === 'loading'" />
+                    <div v-else>
+                        <LibDataTable
+                            title="Process Events"
+                            :auto-expand="false"
+                            row-class="bg-elevated/40"
+                            description="Current and recent process events"
+                            :rows="rowState[row?.original?.id || row?.id].data"
+                            :columns="processesEventsTableColumns"
+                            :loading="loading"
+                        />
+                    </div>
+                </div>
+            </template>
+        </LibDataTable>
         <div ref="loadMoreTrigger" />
     </div>
 </template>
@@ -83,6 +101,7 @@ const filterValues = ref({
 })
 const processesRuns = ref([])
 const loadMoreTrigger = ref(null)
+const rowState = ref({})
 
 // Non-reactive locals
 let observer
@@ -159,7 +178,7 @@ const getStatusColor = (status) => {
 }
 
 // Table columns with enhanced configuration
-const tableColumns = [
+const processesTableColumns = [
     { key: 'process_id', label: 'Proceso', id: 'process_id' },
     { key: 'account', label: 'Cuenta', id: 'account' },
     {
@@ -190,6 +209,56 @@ const tableColumns = [
     },
     { key: 'finished', id: 'finished', label: 'Finalizado', formatter: (value) => value ? 'Si' : 'No' }
 ]
+
+const processesEventsTableColumns = [
+    { key: 'uuid', label: 'UUID', id: 'uuid' },
+    {
+        key: 'created_at',
+        id: 'created_at',
+        label: 'Inicio',
+        type: 'datetimeseconds'
+    },
+    {
+        key: 'thread_id',
+        id: 'thread_id',
+        label: 'Thread ID',
+        type: 'text'
+    },
+    {
+        key: 'message',
+        id: 'message',
+        label: 'Mensaje',
+        type: 'text'
+    },
+    {
+        key: 'status',
+        label: 'Event State',
+        type: 'badge',
+        id: 'status',
+        props: { size: 'xl' },
+        colorResolver: (row) => getStatusColor(row.status)
+    },
+    { key: 'last_event', id: 'last_event', label: 'Último evento', formatter: (value) => value ? 'Si' : 'No' }
+]
+
+// Table rows
+const handleExpandedUpdate = async (rows) => {
+    // when a row is closed, wont come on rows but will exist on rowState, remove it
+    Object.keys(rowState.value).forEach(key => {
+        if (!rows[key]) {
+            // eslint-disable-next-line @typescript-eslint/no-dynamic-delete
+            delete rowState.value[key]
+        }
+    });
+
+    // get the new one we just open
+    const newRow = Object.keys(rows).find(key => !rowState.value[key])
+    if (newRow) {
+        rowState.value[newRow] = { state: 'loading', open: true }
+        const data = await retrieveProcessEvents(newRow)
+        rowState.value[newRow] = { state: 'loaded', open: true, data }
+    }
+}
 
 // -----------------------------------------------------------------------------
 // Computed properties
@@ -272,6 +341,15 @@ const retrieveProcessesRuns = async (reset = false) => {
     loading.value = false
 }
 
+
+const retrieveProcessEvents = async (processRunId) => {
+    if (!processRunId) return []
+    const { data, error } = await apiRequest(`/api/internal/processes/processes_events?process_run_id=${processRunId}`, { showSuccessToast: false })
+    if (!error && data) {
+        return data
+    }
+    return []
+}
 // -----------------------------------------------------------------------------
 // Realtime subscriptions
 // -----------------------------------------------------------------------------
@@ -279,13 +357,19 @@ const subscribeToProcessesRuns = () => {
     realtimeChannel = supabase.channel('realtime:processes_runs').on(
         'postgres_changes',
         { event: '*', schema: 'public', table: 'processes_runs', filter: `environment=eq.${mainStore.mainEnv}` },
-        (payload) => {
+        async (payload) => {
             if (payload.eventType === 'INSERT') {
                 processesRuns.value.unshift(payload.new)
             } else if (payload.eventType === 'UPDATE') {
                 const index = processesRuns.value.findIndex(run => run.id === payload.new.id)
                 if (index !== -1) {
                     processesRuns.value[index] = payload.new
+                    // check if the process run is open, if so, update the events
+                    if (rowState.value[payload.new.id]?.open) {
+                        rowState.value[payload.new.id].state = 'loading'
+                        rowState.value[payload.new.id].data = await retrieveProcessEvents(payload.new.id)
+                        rowState.value[payload.new.id].state = 'loaded'
+                    }
                 }
             } else if (payload.eventType === 'DELETE') {
                 const index = processesRuns.value.findIndex(run => run.id === payload.old.id)

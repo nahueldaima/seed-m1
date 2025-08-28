@@ -9,8 +9,8 @@ class ProcessEventModel {
   static async findAll(supabase, options = {}) {
     let query = supabase.from(this.TABLE_NAME).select('*')
     
-    if (options.jobId) {
-      query = query.eq('job_id', options.jobId)
+    if (options.process_run_id) {
+      query = query.eq('process_run_id', options.process_run_id)
     }
     
     if (options.status) {
@@ -20,7 +20,7 @@ class ProcessEventModel {
     if (options.orderBy) {
       query = query.order(options.orderBy.field, { ascending: options.orderBy.ascending ?? true })
     } else {
-      query = query.order('seq', { ascending: true })
+      query = query.order('created_at', { ascending: true })
     }
     
     if (options.limit) {
@@ -48,7 +48,7 @@ class ProcessEventModel {
       query = query.eq('status', options.status)
     }
     
-    query = query.order('seq', { ascending: true })
+    query = query.order('created_at', { ascending: true })
     
     if (options.limit) {
       query = query.limit(options.limit)
@@ -64,7 +64,7 @@ class ProcessEventModel {
     const query = supabase.from(this.TABLE_NAME)
       .select('*')
       .eq('job_id', jobId)
-      .order('seq', { ascending: false })
+      .order('created_at', { ascending: false })
       .limit(1)
       .limit(1)
     return executeSupabaseQuery(query)

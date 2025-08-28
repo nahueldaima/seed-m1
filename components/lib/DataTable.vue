@@ -1,6 +1,6 @@
 <script setup>
 import { h, resolveComponent } from 'vue'
-const { rows, columns } = defineProps({
+const { rows, columns, autoExpand, rowClass } = defineProps({
   rows: {
     type: Array,
     default: () => []
@@ -8,6 +8,14 @@ const { rows, columns } = defineProps({
   columns: {
     type: Array,
     default: () => []
+  },
+  autoExpand: {
+    type: Boolean,
+    default: true
+  },
+  rowClass: {
+    type: String,
+    default: ''
   }
 })
 
@@ -66,7 +74,7 @@ const normalizedColumns = computed(() => {
     }
   })
 
-  if (!hasExpand) {
+  if (!hasExpand && autoExpand) {
     const expandColumn = {
       id: 'expand',
       cell: ({ row }) =>
@@ -93,6 +101,12 @@ const normalizedColumns = computed(() => {
 
 const normalizedRows = computed(() => (Array.isArray(rows) ? rows : []))
 
+const tableOptions = {
+  getRowId: (row) => {
+    return row?.original?.id || row?.id || row?.original?._id || row?._id 
+  }
+}
+
 const expanded = ref({})
 </script>
 
@@ -101,7 +115,8 @@ const expanded = ref({})
     v-model:expanded="expanded"
     :data="normalizedRows"
     :columns="normalizedColumns"
-    :ui="{ tr: 'data-[expanded=true]:bg-elevated/50' }"
+    :get-row-id="tableOptions.getRowId"
+    :ui="{ tr: 'data-[expanded=true]:bg-elevated/50 ' + rowClass }"
     class="flex-1"
   >
     <template #expanded="{ row }">
